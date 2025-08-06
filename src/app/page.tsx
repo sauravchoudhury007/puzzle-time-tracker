@@ -1,5 +1,4 @@
-export const dynamic = 'force-static';
-export const revalidate = 360000; // cache for one hour
+export const dynamic = 'force-dynamic';
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import Image from 'next/image'
