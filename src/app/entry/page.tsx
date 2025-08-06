@@ -100,7 +100,7 @@ export default function EntryPage() {
   return (
     <main className="max-w-md mx-auto mt-16 p-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-lg">
       <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">
-        Log Today’s Puzzle
+        Log A Puzzle Time
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
