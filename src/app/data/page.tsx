@@ -68,8 +68,9 @@ export default function DataPage() {
           `Imported ${toUpsert.length - errors.length} rows${errors.length ? `, ${errors.length} skipped` : ''}.`
         );
       }
-    } catch (err: any) {
-      setImportError(err.message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setImportError(message);
     }
 
     setLoadingImport(false);
