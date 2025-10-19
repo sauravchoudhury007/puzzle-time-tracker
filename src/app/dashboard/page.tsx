@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import {
   LineChart,
@@ -16,107 +16,175 @@ interface Summary {
   total_puzzles: number
   avg_time_seconds: number
 }
+
 interface TimeBucket {
   period: string
   avg_time_seconds: number
 }
+
 interface PuzzleTime {
   date: string
   time_seconds: number
 }
 
+interface DistributionBucket {
+  label: string
+  percent: number
+  count: number
+}
+
+interface DashboardData {
+  summary: Summary | null
+  weekly: TimeBucket[]
+  monthly: TimeBucket[]
+  topFastest: PuzzleTime[]
+  topSlowest: PuzzleTime[]
+  distribution: DistributionBucket[]
+  totalSeconds: number
+}
+
+let cachedDashboardData: DashboardData | null = null
+let dashboardFetchPromise: Promise<DashboardData> | null = null
+
+async function fetchDashboardData(): Promise<DashboardData> {
+  const { data: sum } = await supabase
+    .from('user_stats_all_time')
+    .select('*')
+    .single()
+
+  const { data: wk } = await supabase
+    .from('user_weekly_stats')
+    .select('week_start, avg_time_seconds')
+    .order('week_start', { ascending: true })
+
+  const weekly: TimeBucket[] = (wk || []).map(item => ({
+    period: String(item.week_start).slice(0, 10),
+    avg_time_seconds: item.avg_time_seconds,
+  }))
+
+  const { data: mo } = await supabase
+    .from('user_monthly_stats')
+    .select('month_start, avg_time_seconds')
+    .order('month_start', { ascending: true })
+
+  const monthly: TimeBucket[] = (mo || []).map(item => ({
+    period: String(item.month_start).slice(0, 10),
+    avg_time_seconds: item.avg_time_seconds,
+  }))
+
+  const { data: fastest } = await supabase
+    .from('puzzle_times')
+    .select('date, time_seconds')
+    .order('time_seconds', { ascending: true })
+    .limit(10)
+
+  const { data: slowest } = await supabase
+    .from('puzzle_times')
+    .select('date, time_seconds')
+    .order('time_seconds', { ascending: false })
+    .limit(10)
+
+  const { data: allTimes } = await supabase
+    .from('puzzle_times')
+    .select('time_seconds')
+
+  let totalSeconds = 0
+  let distribution: DistributionBucket[] = []
+
+  if (allTimes) {
+    const counts = {
+      '<1': 0,
+      '1-2': 0,
+      '2-3': 0,
+      '3-4': 0,
+      '4-5': 0,
+      '>5': 0,
+    }
+
+    allTimes.forEach(item => {
+      totalSeconds += item.time_seconds
+      const s = item.time_seconds
+      if (s <= 60) counts['<1']++
+      else if (s <= 120) counts['1-2']++
+      else if (s <= 180) counts['2-3']++
+      else if (s <= 240) counts['3-4']++
+      else if (s <= 300) counts['4-5']++
+      else counts['>5']++
+    })
+
+    const total = allTimes.length
+    distribution = [
+      { label: '< 1 min', percent: (counts['<1'] / total) * 100, count: counts['<1'] },
+      { label: '1 – 2 min', percent: (counts['1-2'] / total) * 100, count: counts['1-2'] },
+      { label: '2 – 3 min', percent: (counts['2-3'] / total) * 100, count: counts['2-3'] },
+      { label: '3 – 4 min', percent: (counts['3-4'] / total) * 100, count: counts['3-4'] },
+      { label: '4 – 5 min', percent: (counts['4-5'] / total) * 100, count: counts['4-5'] },
+      { label: '> 5 min', percent: (counts['>5'] / total) * 100, count: counts['>5'] },
+    ]
+  }
+
+  return {
+    summary: sum || null,
+    weekly,
+    monthly,
+    topFastest: fastest || [],
+    topSlowest: slowest || [],
+    distribution,
+    totalSeconds,
+  }
+}
+
 export default function DashboardPage() {
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [weekly, setWeekly] = useState<TimeBucket[]>([])
-  const [monthly, setMonthly] = useState<TimeBucket[]>([])
-  const [topFastest, setTopFastest] = useState<PuzzleTime[]>([])
-  const [topSlowest, setTopSlowest] = useState<PuzzleTime[]>([])
-  const [distribution, setDistribution] = useState<{label: string; percent: number; count: number}[]>([])
-  const [totalSeconds, setTotalSeconds] = useState<number>(0)
+  const [summary, setSummary] = useState<Summary | null>(() => cachedDashboardData?.summary ?? null)
+  const [weekly, setWeekly] = useState<TimeBucket[]>(() => cachedDashboardData?.weekly ?? [])
+  const [monthly, setMonthly] = useState<TimeBucket[]>(() => cachedDashboardData?.monthly ?? [])
+  const [topFastest, setTopFastest] = useState<PuzzleTime[]>(() => cachedDashboardData?.topFastest ?? [])
+  const [topSlowest, setTopSlowest] = useState<PuzzleTime[]>(() => cachedDashboardData?.topSlowest ?? [])
+  const [distribution, setDistribution] = useState<DistributionBucket[]>(() => cachedDashboardData?.distribution ?? [])
+  const [totalSeconds, setTotalSeconds] = useState<number>(() => cachedDashboardData?.totalSeconds ?? 0)
 
   useEffect(() => {
-    async function loadStats() {
-      // Fetch summary & stats
-      const { data: sum } = await supabase
-        .from('user_stats_all_time')
-        .select('*')
-        .single()
-      setSummary(sum || null)
+    let isMounted = true
 
-      const { data: wk } = await supabase
-        .from('user_weekly_stats')
-        .select('week_start, avg_time_seconds')
-        .order('week_start', { ascending: true })
-      setWeekly(
-        (wk || []).map(item => ({
-          period: String(item.week_start).slice(0, 10),
-          avg_time_seconds: item.avg_time_seconds,
-        }))
-      )
-
-      const { data: mo } = await supabase
-        .from('user_monthly_stats')
-        .select('month_start, avg_time_seconds')
-        .order('month_start', { ascending: true })
-      setMonthly(
-        (mo || []).map(item => ({
-          period: String(item.month_start).slice(0, 10),
-          avg_time_seconds: item.avg_time_seconds,
-        }))
-      )
-
-      // Fetch top 10 fastest & slowest times
-      const { data: fastest } = await supabase
-        .from('puzzle_times')
-        .select('date, time_seconds')
-        .order('time_seconds', { ascending: true })
-        .limit(10)
-      setTopFastest(fastest || [])
-
-      const { data: slowest } = await supabase
-        .from('puzzle_times')
-        .select('date, time_seconds')
-        .order('time_seconds', { ascending: false })
-        .limit(10)
-      setTopSlowest(slowest || [])
-
-      // Fetch all times to compute distribution
-      const { data: allTimes } = await supabase
-        .from('puzzle_times')
-        .select('time_seconds')
-      if (allTimes) {
-        let sumSec = 0
-        const counts = {
-          '<1': 0,
-          '1-2': 0,
-          '2-3': 0,
-          '3-4': 0,
-          '4-5': 0,
-          '>5': 0
-        }
-        allTimes.forEach(item => {
-          sumSec += item.time_seconds
-          const s = item.time_seconds
-          if (s <= 60) counts['<1']++
-          else if (s <= 120) counts['1-2']++
-          else if (s <= 180) counts['2-3']++
-          else if (s <= 240) counts['3-4']++
-          else if (s <= 300) counts['4-5']++
-          else counts['>5']++
-        })
-        const total = allTimes.length
-        setDistribution([
-          { label: '< 1 min', percent: (counts['<1'] / total) * 100, count: counts['<1'] },
-          { label: '1 – 2 min', percent: (counts['1-2'] / total) * 100, count: counts['1-2'] },
-          { label: '2 – 3 min', percent: (counts['2-3'] / total) * 100, count: counts['2-3'] },
-          { label: '3 – 4 min', percent: (counts['3-4'] / total) * 100, count: counts['3-4'] },
-          { label: '4 – 5 min', percent: (counts['4-5'] / total) * 100, count: counts['4-5'] },
-          { label: '> 5 min', percent: (counts['>5'] / total) * 100, count: counts['>5'] },
-        ])
-        setTotalSeconds(sumSec)
+    if (cachedDashboardData) {
+      return () => {
+        isMounted = false
       }
     }
-    loadStats()
+
+    if (!dashboardFetchPromise) {
+      dashboardFetchPromise = fetchDashboardData()
+        .then(data => {
+          cachedDashboardData = data
+          return data
+        })
+        .catch(error => {
+          console.error('Failed to load dashboard data', error)
+          throw error
+        })
+    }
+
+    dashboardFetchPromise
+      .then(data => {
+        if (!isMounted) return
+        setSummary(data.summary)
+        setWeekly(data.weekly)
+        setMonthly(data.monthly)
+        setTopFastest(data.topFastest)
+        setTopSlowest(data.topSlowest)
+        setDistribution(data.distribution)
+        setTotalSeconds(data.totalSeconds)
+      })
+      .catch(() => {
+        // Errors are logged above; keep the existing state untouched.
+      })
+      .finally(() => {
+        dashboardFetchPromise = null
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const fmt = (s: number) => {

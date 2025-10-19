@@ -3,6 +3,11 @@ import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import Image from 'next/image'
 
+const AVATAR_FILE_KEY = 'solving.jpeg'
+// Client-side navigations reuse this module instance, so keep the signed URL cached here.
+let cachedAvatarUrl: { url: string; expiresAt: number } | null = null
+const SIGNED_URL_TTL_SECONDS = 60 * 30 // 30 minutes
+
 export default async function HomePage() {
   // Initialize Supabase Admin client with service role key
   const supabaseAdmin = createClient(
@@ -10,16 +15,24 @@ export default async function HomePage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Generate a signed URL for the known file
+  // Generate (or reuse) a signed URL for the known file
   let avatarUrl: string | null = null
-  {
+  const now = Date.now()
+
+  if (cachedAvatarUrl && cachedAvatarUrl.expiresAt > now) {
+    avatarUrl = cachedAvatarUrl.url
+  } else {
     const { data: signedData, error: urlError } = await supabaseAdmin.storage
       .from('avatar')
-      .createSignedUrl('solving.jpeg', 300)
+      .createSignedUrl(AVATAR_FILE_KEY, SIGNED_URL_TTL_SECONDS)
     if (urlError) {
       console.error('Error creating signed URL:', urlError.message)
-    } else {
+    } else if (signedData?.signedUrl) {
       avatarUrl = signedData.signedUrl
+      cachedAvatarUrl = {
+        url: signedData.signedUrl,
+        expiresAt: now + SIGNED_URL_TTL_SECONDS * 1000,
+      }
     }
   }
 
@@ -33,11 +46,11 @@ export default async function HomePage() {
       {avatarUrl && (
         <div className="mb-8 w-80 h-80 overflow-hidden rounded-full border-4 border-white shadow-xl">
           <Image
-            src={avatarUrl!}
+            src={avatarUrl}
             alt="You and your partner solving puzzles"
             width={320}
             height={320}
-            className="object-cover"
+            className="object-cover transform scale-100"
             priority
             unoptimized
           />
