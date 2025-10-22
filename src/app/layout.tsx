@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     { href: '/', label: 'Home' },
     { href: '/entry', label: 'Log Entry' },
     { href: '/dashboard', label: 'Dashboard' },
+    { href: '/tracker', label: 'Tracker' },
     { href: '/data', label: 'Data' },
   ];
 

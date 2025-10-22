@@ -74,6 +74,12 @@ function formatSeconds(seconds: number | null): string {
   return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+function formatDateLabel(dateKey: string, opts?: Intl.DateTimeFormatOptions): string {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  const dt = new Date(Date.UTC(year, month - 1, day))
+  return dt.toLocaleDateString(undefined, { timeZone: 'UTC', ...opts })
+}
+
 function buildCalendarGrid(start: Date, end: Date, dailyMap: Map<string, number>): CalendarGrid {
   if (start > end) {
     return { weeks: [], monthLabels: [] }
@@ -130,7 +136,7 @@ function buildCalendarGrid(start: Date, end: Date, dailyMap: Map<string, number>
       return
     }
     const dayDate = parseDateKey(activeDay.date)
-    const label = dayDate.toLocaleString(undefined, { month: 'short' })
+    const label = dayDate.toLocaleString(undefined, { month: 'short', timeZone: 'UTC' })
     if ((index === 0 || dayDate.getUTCDate() <= 7) && label !== lastLabel) {
       monthLabels.push(label)
       lastLabel = label
@@ -232,10 +238,11 @@ export default function TrackerPage() {
 
   const getTooltip = (day: DayCell) => {
     if (!day.date) return 'Outside puzzle range'
-    const dateLabel = parseDateKey(day.date).toLocaleDateString(undefined, {
+    const dateLabel = formatDateLabel(day.date, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      weekday: 'short',
     })
 
     if (!day.isActive) {
@@ -279,7 +286,7 @@ export default function TrackerPage() {
                     type="button"
                     disabled={!day.isActive}
                     onClick={() => handleDayClick(day)}
-                    className={`h-4 w-4 rounded-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                    className={`h-4 w-4 rounded-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-white dark:focus:ring-offset-zinc-900 ${
                       day.isActive
                         ? `cursor-pointer ${LEVEL_CLASSES[day.level]}`
                         : `cursor-default opacity-40 ${LEVEL_CLASSES[0]}`
@@ -299,7 +306,7 @@ export default function TrackerPage() {
   return (
     <main className="p-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Puzzle Tracker</h1>
+        <h1 className="text-3xl font-bold">Tracker</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2">
           A contributions-style view of every NYT Mini since 21 Aug 2014.
         </p>

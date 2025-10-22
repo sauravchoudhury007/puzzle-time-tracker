@@ -74,7 +74,7 @@ export default async function HomePage() {
           href="/tracker"
           className="block text-center bg-white text-purple-600 py-3 px-6 rounded-full font-semibold hover:bg-opacity-90"
         >
-          Puzzle Tracker
+          View Tracker
         </Link>
         <Link
           href="/data"
