@@ -71,6 +71,12 @@ export default async function HomePage() {
           View Dashboard
         </Link>
         <Link
+          href="/tracker"
+          className="block text-center bg-white text-purple-600 py-3 px-6 rounded-full font-semibold hover:bg-opacity-90"
+        >
+          Puzzle Tracker
+        </Link>
+        <Link
           href="/data"
           className="block text-center bg-white text-purple-600 py-3 px-6 rounded-full font-semibold hover:bg-opacity-90"
         >
