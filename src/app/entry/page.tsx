@@ -1,13 +1,49 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { LAST_SELECTED_PUZZLE_DATE_KEY } from '@/lib/storageKeys'
+
+const getTodayDate = () => new Date().toISOString().slice(0, 10)
+
+const getStoredDate = (): string | null => {
+  if (typeof window === 'undefined') return null
+  const stored = window.localStorage.getItem(LAST_SELECTED_PUZZLE_DATE_KEY)
+  return stored && /^\d{4}-\d{2}-\d{2}$/.test(stored) ? stored : null
+}
 
 export default function EntryPage() {
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState<string>(() => getStoredDate() ?? getTodayDate())
   const [digits, setDigits] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const todayIso = getTodayDate()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    const stored = getStoredDate()
+    if (stored) {
+      setDate(stored)
+    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === LAST_SELECTED_PUZZLE_DATE_KEY && typeof event.newValue === 'string') {
+        setDate(event.newValue)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [])
+
+  const updateDate = (nextDate: string) => {
+    setDate(nextDate)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LAST_SELECTED_PUZZLE_DATE_KEY, nextDate)
+    }
+  }
 
   // Format digits into MM:SS
   const formattedTime = (() => {
@@ -39,7 +75,7 @@ export default function EntryPage() {
     setMessage(null)
 
     // Prevent future dates
-    const today = new Date().toISOString().slice(0, 10)
+    const today = getTodayDate()
     if (date > today) {
       setMessage('Cannot log time for a future date.')
       setLoading(false)
@@ -109,8 +145,8 @@ export default function EntryPage() {
           <input
             type="date"
             value={date}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => setDate(e.target.value)}
+            max={todayIso}
+            onChange={e => updateDate(e.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-gray-50 dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             required
           />

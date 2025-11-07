@@ -197,7 +197,13 @@ export default function DashboardPage() {
 
   const formatDate = (d: string) => {
     const dt = new Date(d)
-    return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    if (Number.isNaN(dt.getTime())) return d
+    return dt.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    })
   }
 
   return (

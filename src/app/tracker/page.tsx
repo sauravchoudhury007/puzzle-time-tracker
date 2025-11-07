@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { LAST_SELECTED_PUZZLE_DATE_KEY } from '@/lib/storageKeys'
 
 type PuzzleRecord = {
   date: string
@@ -13,6 +14,7 @@ type DayCell = {
   level: number
   seconds: number | null
   isActive: boolean
+  year: number
 }
 
 type CalendarGrid = {
@@ -22,12 +24,87 @@ type CalendarGrid = {
 
 const START_DATE = new Date(Date.UTC(2014, 7, 21)) // August is month index 7
 
-const LEVEL_CLASSES: Record<number, string> = {
+const BASE_LEVEL_CLASSES: Record<number, string> = {
   0: 'bg-zinc-200 dark:bg-zinc-800 border border-zinc-300/40 dark:border-zinc-700/60',
   1: 'bg-emerald-200 dark:bg-emerald-950/50 border border-emerald-200/70 dark:border-emerald-900/60',
   2: 'bg-emerald-300 dark:bg-emerald-900/70 border border-emerald-300/70 dark:border-emerald-800/60',
   3: 'bg-emerald-400 dark:bg-emerald-800 border border-emerald-400/70 dark:border-emerald-700/50',
   4: 'bg-emerald-500 dark:bg-emerald-600 border border-emerald-500/70 dark:border-emerald-500/60',
+}
+
+const YEAR_LEVEL_CLASSES: Record<number, Record<number, string>> = {
+  2014: {
+    1: 'bg-emerald-200 dark:bg-emerald-950/50 border border-emerald-200/70 dark:border-emerald-900/60',
+    2: 'bg-emerald-300 dark:bg-emerald-900/70 border border-emerald-300/70 dark:border-emerald-800/60',
+    3: 'bg-emerald-400 dark:bg-emerald-800 border border-emerald-400/70 dark:border-emerald-700/50',
+    4: 'bg-emerald-500 dark:bg-emerald-600 border border-emerald-500/70 dark:border-emerald-500/60',
+  },
+  2015: {
+    1: 'bg-teal-200 dark:bg-teal-950/50 border border-teal-200/70 dark:border-teal-900/60',
+    2: 'bg-teal-300 dark:bg-teal-900/70 border border-teal-300/70 dark:border-teal-800/60',
+    3: 'bg-teal-400 dark:bg-teal-800 border border-teal-400/70 dark:border-teal-700/50',
+    4: 'bg-teal-500 dark:bg-teal-600 border border-teal-500/70 dark:border-teal-500/60',
+  },
+  2016: {
+    1: 'bg-cyan-200 dark:bg-cyan-950/50 border border-cyan-200/70 dark:border-cyan-900/60',
+    2: 'bg-cyan-300 dark:bg-cyan-900/70 border border-cyan-300/70 dark:border-cyan-800/60',
+    3: 'bg-cyan-400 dark:bg-cyan-800 border border-cyan-400/70 dark:border-cyan-700/50',
+    4: 'bg-cyan-500 dark:bg-cyan-600 border border-cyan-500/70 dark:border-cyan-500/60',
+  },
+  2017: {
+    1: 'bg-sky-200 dark:bg-sky-950/50 border border-sky-200/70 dark:border-sky-900/60',
+    2: 'bg-sky-300 dark:bg-sky-900/70 border border-sky-300/70 dark:border-sky-800/60',
+    3: 'bg-sky-400 dark:bg-sky-800 border border-sky-400/70 dark:border-sky-700/50',
+    4: 'bg-sky-500 dark:bg-sky-600 border border-sky-500/70 dark:border-sky-500/60',
+  },
+  2018: {
+    1: 'bg-blue-200 dark:bg-blue-950/50 border border-blue-200/70 dark:border-blue-900/60',
+    2: 'bg-blue-300 dark:bg-blue-900/70 border border-blue-300/70 dark:border-blue-800/60',
+    3: 'bg-blue-400 dark:bg-blue-800 border border-blue-400/70 dark:border-blue-700/50',
+    4: 'bg-blue-500 dark:bg-blue-600 border border-blue-500/70 dark:border-blue-500/60',
+  },
+  2019: {
+    1: 'bg-indigo-200 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-900/60',
+    2: 'bg-indigo-300 dark:bg-indigo-900/70 border border-indigo-300/70 dark:border-indigo-800/60',
+    3: 'bg-indigo-400 dark:bg-indigo-800 border border-indigo-400/70 dark:border-indigo-700/50',
+    4: 'bg-indigo-500 dark:bg-indigo-600 border border-indigo-500/70 dark:border-indigo-500/60',
+  },
+  2020: {
+    1: 'bg-violet-200 dark:bg-violet-950/50 border border-violet-200/70 dark:border-violet-900/60',
+    2: 'bg-violet-300 dark:bg-violet-900/70 border border-violet-300/70 dark:border-violet-800/60',
+    3: 'bg-violet-400 dark:bg-violet-800 border border-violet-400/70 dark:border-violet-700/50',
+    4: 'bg-violet-500 dark:bg-violet-600 border border-violet-500/70 dark:border-violet-500/60',
+  },
+  2021: {
+    1: 'bg-purple-200 dark:bg-purple-950/50 border border-purple-200/70 dark:border-purple-900/60',
+    2: 'bg-purple-300 dark:bg-purple-900/70 border border-purple-300/70 dark:border-purple-800/60',
+    3: 'bg-purple-400 dark:bg-purple-800 border border-purple-400/70 dark:border-purple-700/50',
+    4: 'bg-purple-500 dark:bg-purple-600 border border-purple-500/70 dark:border-purple-500/60',
+  },
+  2022: {
+    1: 'bg-fuchsia-200 dark:bg-fuchsia-950/50 border border-fuchsia-200/70 dark:border-fuchsia-900/60',
+    2: 'bg-fuchsia-300 dark:bg-fuchsia-900/70 border border-fuchsia-300/70 dark:border-fuchsia-800/60',
+    3: 'bg-fuchsia-400 dark:bg-fuchsia-800 border border-fuchsia-400/70 dark:border-fuchsia-700/50',
+    4: 'bg-fuchsia-500 dark:bg-fuchsia-600 border border-fuchsia-500/70 dark:border-fuchsia-500/60',
+  },
+  2023: {
+    1: 'bg-pink-200 dark:bg-pink-950/50 border border-pink-200/70 dark:border-pink-900/60',
+    2: 'bg-pink-300 dark:bg-pink-900/70 border border-pink-300/70 dark:border-pink-800/60',
+    3: 'bg-pink-400 dark:bg-pink-800 border border-pink-400/70 dark:border-pink-700/50',
+    4: 'bg-pink-500 dark:bg-pink-600 border border-pink-500/70 dark:border-pink-500/60',
+  },
+  2024: {
+    1: 'bg-rose-200 dark:bg-rose-950/50 border border-rose-200/70 dark:border-rose-900/60',
+    2: 'bg-rose-300 dark:bg-rose-900/70 border border-rose-300/70 dark:border-rose-800/60',
+    3: 'bg-rose-400 dark:bg-rose-800 border border-rose-400/70 dark:border-rose-700/50',
+    4: 'bg-rose-500 dark:bg-rose-600 border border-rose-500/70 dark:border-rose-500/60',
+  },
+  2025: {
+    1: 'bg-amber-200 dark:bg-amber-950/50 border border-amber-200/70 dark:border-amber-900/60',
+    2: 'bg-amber-300 dark:bg-amber-900/70 border border-amber-300/70 dark:border-amber-800/60',
+    3: 'bg-amber-400 dark:bg-amber-800 border border-amber-400/70 dark:border-amber-700/50',
+    4: 'bg-amber-500 dark:bg-amber-600 border border-amber-500/70 dark:border-amber-500/60',
+  },
 }
 
 function toDateKey(date: Date): string {
@@ -103,6 +180,7 @@ function buildCalendarGrid(start: Date, end: Date, dailyMap: Map<string, number>
       level,
       seconds,
       isActive,
+      year: cursor.getUTCFullYear(),
     })
 
     if (currentWeek.length === 7) {
@@ -121,6 +199,7 @@ function buildCalendarGrid(start: Date, end: Date, dailyMap: Map<string, number>
         level: 0,
         seconds: null,
         isActive: false,
+        year: cursor.getUTCFullYear(),
       })
       cursor = addDays(cursor, 1)
     }
@@ -146,6 +225,13 @@ function buildCalendarGrid(start: Date, end: Date, dailyMap: Map<string, number>
   })
 
   return { weeks, monthLabels }
+}
+
+function getLevelClassForDay(day: DayCell): string {
+  if (!day.isActive || day.level === 0) {
+    return BASE_LEVEL_CLASSES[0]
+  }
+  return YEAR_LEVEL_CLASSES[day.year]?.[day.level] ?? BASE_LEVEL_CLASSES[day.level]
 }
 
 export default function TrackerPage() {
@@ -225,6 +311,10 @@ export default function TrackerPage() {
     Math.floor((today.getTime() - START_DATE.getTime()) / (1000 * 60 * 60 * 24)) + 1
   )
   const completionRate = ((totalSolved / totalDays) * 100).toFixed(1)
+  const legendYear = Math.max(2014, Math.min(2025, today.getUTCFullYear()))
+  const legendPalette = [1, 2, 3, 4].map(
+    level => YEAR_LEVEL_CLASSES[legendYear]?.[level] ?? BASE_LEVEL_CLASSES[level]
+  )
 
   const handleDayClick = (day: DayCell) => {
     if (!day.isActive || !day.date) return
@@ -232,6 +322,9 @@ export default function TrackerPage() {
     const year = dt.getUTCFullYear()
     const month = dt.getUTCMonth() + 1
     const dayOfMonth = dt.getUTCDate()
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LAST_SELECTED_PUZZLE_DATE_KEY, day.date)
+    }
     const url = `https://www.nytimes.com/crosswords/game/mini/${year}/${month}/${dayOfMonth}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
@@ -280,21 +373,21 @@ export default function TrackerPage() {
           <div className="flex gap-[2px]">
             {weeks.map((week, weekIndex) => (
               <div key={`week-${weekIndex}`} className="flex flex-col gap-[2px]">
-                {week.map((day, dayIndex) => (
-                  <button
-                    key={day.date ? `day-${day.date}` : `placeholder-${weekIndex}-${dayIndex}`}
-                    type="button"
-                    disabled={!day.isActive}
-                    onClick={() => handleDayClick(day)}
-                    className={`h-4 w-4 rounded-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-white dark:focus:ring-offset-zinc-900 ${
-                      day.isActive
-                        ? `cursor-pointer ${LEVEL_CLASSES[day.level]}`
-                        : `cursor-default opacity-40 ${LEVEL_CLASSES[0]}`
-                    }`}
-                    title={getTooltip(day)}
-                    aria-label={getTooltip(day)}
-                  />
-                ))}
+                {week.map((day, dayIndex) => {
+                  const paletteClass = day.isActive ? getLevelClassForDay(day) : BASE_LEVEL_CLASSES[0]
+                  const stateClass = day.isActive ? 'cursor-pointer' : 'cursor-default opacity-40'
+                  return (
+                    <button
+                      key={day.date ? `day-${day.date}` : `placeholder-${weekIndex}-${dayIndex}`}
+                      type="button"
+                      disabled={!day.isActive}
+                      onClick={() => handleDayClick(day)}
+                      className={`h-4 w-4 rounded-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-white dark:focus:ring-offset-zinc-900 ${stateClass} ${paletteClass}`}
+                      title={getTooltip(day)}
+                      aria-label={getTooltip(day)}
+                    />
+                  )
+                })}
               </div>
             ))}
           </div>
@@ -330,20 +423,24 @@ export default function TrackerPage() {
       <section className="rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">All-Time Contribution Grid</h2>
-          <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="flex flex-col gap-2 text-xs text-zinc-500 dark:text-zinc-400 sm:flex-row sm:items-center">
             <div className="flex items-center gap-1">
-              <div className={`h-3 w-3 rounded ${LEVEL_CLASSES[0]}`} />
+              <div className={`h-3 w-3 rounded ${BASE_LEVEL_CLASSES[0]}`} />
               <span>Not logged</span>
             </div>
             <div className="flex items-center gap-1">
               <span>Slower</span>
-              {[1, 2, 3, 4].map(level => (
-                <div key={level} className={`h-3 w-3 rounded ${LEVEL_CLASSES[level]}`} />
+              {legendPalette.map((classes, idx) => (
+                <div key={`legend-${idx}`} className={`h-3 w-3 rounded ${classes}`} />
               ))}
               <span>Faster</span>
             </div>
+            <span className="sm:ml-2">Legend shown for {legendYear}</span>
           </div>
         </div>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Each year between 2014 and 2025 has its own palette so streaks are easier to tell apart.
+        </p>
 
         {loading && <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading tracker…</p>}
         {error && !loading && (
