@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { LAST_SELECTED_PUZZLE_DATE_KEY } from '@/lib/storageKeys'
+import NavPill from '@/components/NavPill'
 
 const getTodayDate = () => new Date().toISOString().slice(0, 10)
 
@@ -134,53 +135,66 @@ export default function EntryPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto mt-16 p-8 bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-2xl shadow-lg">
-      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">
-        Log A Puzzle Time
-      </h1>
+    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-5 py-16">
+      <div className="space-y-3">
+        <NavPill currentHref="/entry" />
+        <h1 className="text-3xl font-extrabold text-white md:text-4xl">Quick Entry</h1>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block mb-1 text-gray-700 dark:text-gray-300">Date</label>
-          <input
-            type="date"
-            value={date}
-            max={todayIso}
-            onChange={e => updateDate(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-gray-50 dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
-          />
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_0%,rgba(255,255,255,0.08),transparent_40%)]" />
+        <div className="relative grid gap-8 lg:grid-cols-[1.2fr_1fr]">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="group flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70 transition hover:border-emerald-300/50">
+                <span className="text-xs uppercase tracking-[0.18em] text-white/60">Date</span>
+                <input
+                  type="date"
+                  value={date}
+                  max={todayIso}
+                  onChange={e => updateDate(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-[#0c182e]/70 px-3 py-2 text-white shadow-inner focus:border-emerald-300 focus:outline-none"
+                  required
+                />
+              </label>
+              <label className="group flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70 transition hover:border-sky-300/50">
+                <span className="text-xs uppercase tracking-[0.18em] text-white/60">Time (MM:SS)</span>
+                <input
+                  type="text"
+                  value={formattedTime}
+                  onKeyDown={handleTimeKeyDown}
+                  placeholder="00:00"
+                  readOnly
+                  className="w-full rounded-xl border border-white/10 bg-[#0c182e]/70 px-3 py-2 text-white shadow-inner focus:border-sky-300 focus:outline-none"
+                  required
+                />
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl border border-emerald-300/30 bg-gradient-to-r from-emerald-500/80 to-sky-500/80 px-4 py-3 text-sm font-semibold text-white shadow-[0_15px_40px_rgba(16,185,129,0.35)] transition hover:translate-y-[-2px] hover:shadow-[0_20px_50px_rgba(56,189,248,0.35)] disabled:opacity-60"
+            >
+              {loading ? 'Saving…' : 'Save time'}
+            </button>
+
+            {message && (
+              <p className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white/80">
+                {message}
+              </p>
+            )}
+          </form>
+
+          <div className="rounded-2xl border border-white/10 bg-[#0c182e]/80 p-6 shadow-inner backdrop-blur-xl">
+            <p className="text-xs uppercase tracking-[0.2em] text-white/60">Status</p>
+            <p className="mt-3 text-lg font-semibold text-white">Entry guardrails on</p>
+            <p className="mt-2 text-sm text-white/70">
+              Future dates are blocked and times stay locked to MM:SS for clean logs.
+            </p>
+          </div>
         </div>
-
-        <div>
-          <label className="block mb-1 text-gray-700 dark:text-gray-300">Time (MM:SS)</label>
-          <input
-            type="text"
-            value={formattedTime}
-            onKeyDown={handleTimeKeyDown}
-            placeholder="00:00"
-            readOnly
-            className="w-full rounded-lg border border-gray-300 bg-gray-50 dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full rounded-lg py-3 font-semibold text-white ${
-            loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
-          }`}
-        >
-          {loading ? 'Saving…' : 'Save'}
-        </button>
-
-        {message && (
-          <p className="mt-4 text-center text-sm text-gray-900 dark:text-gray-100">
-            {message}
-          </p>
-        )}
-      </form>
+      </section>
     </main>
   )
 }

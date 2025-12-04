@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import NavPill from '@/components/NavPill';
 
 export default function DataPage() {
   const [loadingExport, setLoadingExport] = useState(false);
@@ -101,37 +102,56 @@ export default function DataPage() {
   };
 
   return (
-    <main className="max-w-lg mx-auto mt-16 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow">
-      <h1 className="text-2xl font-bold mb-4">Data Import & Export</h1>
-      <div className="space-y-4">
-        <button
-          onClick={handleExport}
-          disabled={loadingExport}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
-        >
-          {loadingExport ? 'Exporting…' : 'Download CSV'}
-        </button>
-        <div>
-          <label className="block mb-2 text-gray-700 dark:text-gray-300">
-            Upload CSV
-          </label>
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileChange}
-            disabled={loadingImport}
-            className="w-full text-gray-900 bg-gray-100 rounded border border-gray-300 py-2 px-3"
-          />
-        </div>
-        <button
-          onClick={handleImport}
-          disabled={!selectedFile || loadingImport}
-          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded mt-2"
-        >
-          {loadingImport ? 'Importing…' : 'Upload CSV'}
-        </button>
-        {importError && <p className="text-red-600">{importError}</p>}
-        {importSuccess && <p className="text-green-600">{importSuccess}</p>}
+    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-5 py-16">
+      <div className="space-y-3">
+        <NavPill currentHref="/data" />
+        <h1 className="text-3xl font-extrabold text-white md:text-4xl">Import & Export</h1>
       </div>
+
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_0%,rgba(255,255,255,0.1),transparent_45%)]" />
+        <div className="relative grid gap-10 lg:grid-cols-2">
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Export your data</h2>
+            <p className="text-sm text-white/70">
+              Generates a CSV ordered by date. Perfect for spreadsheets or moving to another tracker.
+            </p>
+            <button
+              onClick={handleExport}
+              disabled={loadingExport}
+              className="w-full rounded-xl border border-sky-300/40 bg-gradient-to-r from-sky-500/80 to-indigo-500/80 px-4 py-3 text-sm font-semibold text-white shadow-[0_15px_40px_rgba(56,189,248,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(99,102,241,0.35)] disabled:opacity-60"
+            >
+              {loadingExport ? 'Exporting…' : 'Download CSV'}
+            </button>
+          </div>
+
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-[#0c182e]/80 p-6 shadow-inner backdrop-blur-xl">
+            <h2 className="text-xl font-semibold text-white">Import a CSV</h2>
+            <p className="text-sm text-white/70">
+              Uses RLS with your session. Accepts `date,time_seconds` rows and upserts by date.
+            </p>
+            <label className="flex flex-col gap-2 text-sm text-white/80">
+              <span className="text-xs uppercase tracking-[0.18em] text-white/60">Upload CSV</span>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                disabled={loadingImport}
+                className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white file:mr-3 file:rounded-lg file:border-0 file:bg-sky-500/80 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+              />
+            </label>
+            <button
+              onClick={handleImport}
+              disabled={!selectedFile || loadingImport}
+              className="w-full rounded-xl border border-emerald-300/40 bg-gradient-to-r from-emerald-500/80 to-teal-500/80 px-4 py-3 text-sm font-semibold text-white shadow-[0_15px_40px_rgba(16,185,129,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(20,184,166,0.35)] disabled:opacity-60"
+            >
+              {loadingImport ? 'Importing…' : 'Upload CSV'}
+            </button>
+            {importError && <p className="text-sm text-rose-300">{importError}</p>}
+            {importSuccess && <p className="text-sm text-emerald-200">{importSuccess}</p>}
+          </div>
+        </div>
+      </section>
     </main>
-);}
+  );
+}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { LAST_SELECTED_PUZZLE_DATE_KEY } from '@/lib/storageKeys'
+import NavPill from '@/components/NavPill'
 
 type PuzzleRecord = {
   date: string
@@ -348,7 +349,7 @@ export default function TrackerPage() {
 
   const renderGrid = (weeks: DayCell[][], monthLabels: string[]) => {
     if (!weeks.length) {
-      return <p className="text-sm text-zinc-500 dark:text-zinc-400">No data for this range.</p>
+      return <p className="text-sm text-white/70">No data for this range.</p>
     }
 
     return (
@@ -357,14 +358,14 @@ export default function TrackerPage() {
           {monthLabels.map((label, index) => (
             <div
               key={`month-${index}`}
-              className="h-4 w-4 text-[10px] text-zinc-500 dark:text-zinc-400"
+              className="h-4 w-4 text-[10px] text-white/50"
             >
               {label}
             </div>
           ))}
         </div>
         <div className="mt-2 flex">
-          <div className="mr-2 flex flex-col justify-between py-1 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="mr-2 flex flex-col justify-between py-1 text-xs text-white/60">
             <span>Sun</span>
             <span>Tue</span>
             <span>Thu</span>
@@ -382,7 +383,7 @@ export default function TrackerPage() {
                       type="button"
                       disabled={!day.isActive}
                       onClick={() => handleDayClick(day)}
-                      className={`h-4 w-4 rounded-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-white dark:focus:ring-offset-zinc-900 ${stateClass} ${paletteClass}`}
+                      className={`h-4 w-4 rounded-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 focus:ring-offset-[#050b1c] ${stateClass} ${paletteClass}`}
                       title={getTooltip(day)}
                       aria-label={getTooltip(day)}
                     />
@@ -397,33 +398,31 @@ export default function TrackerPage() {
   }
 
   return (
-    <main className="p-8 space-y-8">
+    <main className="relative mx-auto min-h-screen max-w-6xl space-y-8 px-5 py-16">
       <div>
-        <h1 className="text-3xl font-bold">Tracker</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2">
-          A contributions-style view of every NYT Mini since 21 Aug 2014.
-        </p>
+        <NavPill currentHref="/tracker" />
+        <h1 className="mt-3 text-3xl font-extrabold text-white md:text-4xl">Puzzle streak map</h1>
       </div>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Total Completions</p>
-          <p className="mt-2 text-3xl font-semibold">{totalSolved}</p>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <p className="text-sm uppercase tracking-[0.16em] text-white/60">Total Completions</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{totalSolved}</p>
         </div>
-        <div className="rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Days Tracked</p>
-          <p className="mt-2 text-3xl font-semibold">{totalDays}</p>
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <p className="text-sm uppercase tracking-[0.16em] text-white/60">Days Tracked</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{totalDays}</p>
         </div>
-        <div className="rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Completion Rate</p>
-          <p className="mt-2 text-3xl font-semibold">{completionRate}%</p>
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <p className="text-sm uppercase tracking-[0.16em] text-white/60">Completion Rate</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{completionRate}%</p>
         </div>
       </section>
 
-      <section className="rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow space-y-6">
+      <section className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold">All-Time Contribution Grid</h2>
-          <div className="flex flex-col gap-2 text-xs text-zinc-500 dark:text-zinc-400 sm:flex-row sm:items-center">
+          <h2 className="text-xl font-semibold text-white">All-Time Contribution Grid</h2>
+          <div className="flex flex-col gap-2 text-xs text-white/70 sm:flex-row sm:items-center">
             <div className="flex items-center gap-1">
               <div className={`h-3 w-3 rounded ${BASE_LEVEL_CLASSES[0]}`} />
               <span>Not logged</span>
@@ -435,27 +434,23 @@ export default function TrackerPage() {
               ))}
               <span>Faster</span>
             </div>
-            <span className="sm:ml-2">Legend shown for {legendYear}</span>
+            <span className="sm:ml-2 text-white/60">Legend shown for {legendYear}</span>
           </div>
         </div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Each year between 2014 and 2025 has its own palette so streaks are easier to tell apart.
-        </p>
-
-        {loading && <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading tracker…</p>}
+        {loading && <p className="text-sm text-white/70">Loading tracker…</p>}
         {error && !loading && (
-          <p className="text-sm text-red-500 dark:text-red-400">Failed to load data: {error}</p>
+          <p className="text-sm text-rose-300">Failed to load data: {error}</p>
         )}
         {!loading && !error && renderGrid(overallWeeks, overallMonthLabels)}
       </section>
 
       {!loading && !error && yearlyGrids.length > 0 && (
-        <section className="rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow space-y-6">
-          <h2 className="text-xl font-semibold">Yearly Snapshots</h2>
+        <section className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+          <h2 className="text-xl font-semibold text-white">Yearly Snapshots</h2>
           <div className="space-y-6">
             {yearlyGrids.map(({ year, weeks, monthLabels }) => (
               <div key={year} className="space-y-2">
-                <h3 className="text-lg font-semibold text-zinc-700 dark:text-zinc-200">{year}</h3>
+                <h3 className="text-lg font-semibold text-white">{year}</h3>
                 {renderGrid(weeks, monthLabels)}
               </div>
             ))}

@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts'
+import NavPill from '@/components/NavPill'
 
 interface Summary {
   total_puzzles: number
@@ -207,154 +208,171 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="p-8 space-y-8">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+    <main className="relative mx-auto min-h-screen max-w-6xl space-y-10 px-5 py-16">
+      <div className="space-y-2">
+        <NavPill currentHref="/dashboard" />
+        <h1 className="text-3xl font-extrabold text-white md:text-4xl">Puzzle performance</h1>
+      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-          <h2 className="text-lg font-semibold"> Total Puzzles 🧩 </h2>
-          <p className="text-4xl font-bold mt-2">{summary?.total_puzzles ?? '–'}</p>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <h2 className="text-sm uppercase tracking-[0.18em] text-white/60">Total Puzzles</h2>
+          <p className="mt-3 text-4xl font-bold text-white">{summary?.total_puzzles ?? '–'}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-          <h2 className="text-lg font-semibold"> All-time Average ⏱️ </h2>
-          <p className="text-4xl font-bold mt-2">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <h2 className="text-sm uppercase tracking-[0.18em] text-white/60">All-time Average</h2>
+          <p className="mt-3 text-4xl font-bold text-white">
             {summary ? fmt(Math.round(summary.avg_time_seconds)) : '–'}
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow col-span-2">
-          <h2 className="text-lg font-semibold"> Fastest Time ⚡️ </h2>
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl sm:col-span-2">
+          <h2 className="text-sm uppercase tracking-[0.18em] text-white/60">Fastest Time</h2>
           {topFastest.length > 0 && (
-            <p className="text-4xl font-bold mt-2">
+            <p className="mt-3 text-4xl font-bold text-white">
               {fmt(topFastest[0].time_seconds)} on{' '}
-              <span className="font-medium">{formatDate(topFastest[0].date)}</span>
+              <span className="font-medium text-white/80">{formatDate(topFastest[0].date)}</span>
             </p>
           )}
         </div>
       </div>
 
-
-      {/* Top 10 Tables */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow overflow-auto">
-          <h3 className="text-xl font-semibold mb-4"> Time Distribution 📊 </h3>
-          <table className="w-full table-fixed text-left text-sm">
+      <div className="grid grid-cols-1 gap-6 items-stretch md:grid-cols-2">
+        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <h3 className="mb-4 text-xl font-semibold">Time Distribution</h3>
+          <table className="w-full table-fixed text-left text-sm text-white/80">
             <colgroup>
               <col className="w-1/3" />
               <col className="w-1/3" />
               <col className="w-1/3" />
             </colgroup>
-            <thead>
+            <thead className="rounded-lg bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 text-white/80">
               <tr>
                 <th className="pb-2">Range</th>
                 <th className="pb-2">% of Runs</th>
                 <th className="pb-2">Count</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="[&>tr:nth-child(even)]:bg-white/5 [&>tr>td]:py-2">
               {distribution.map((b, i) => (
                 <tr key={i}>
-                  <td className="py-1">{b.label}</td>
-                  <td className="py-1">{b.percent.toFixed(2)}%</td>
-                  <td className="py-1">{b.count}</td>
+                  <td>
+                    <span className="inline-flex rounded-full bg-sky-500/15 px-3 py-1 text-sky-100">
+                      {b.label}
+                    </span>
+                  </td>
+                  <td className="font-semibold text-emerald-100">{b.percent.toFixed(2)}%</td>
+                  <td className="text-indigo-100">{b.count}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
 
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow overflow-auto">
-          <h3 className="text-xl font-semibold mb-4"> Total Solve Time ⏱️ </h3>
-          <table className="w-full table-fixed text-left text-sm">
+        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <h3 className="mb-4 text-xl font-semibold">Total Solve Time</h3>
+          <table className="w-full table-fixed text-left text-sm text-white/80">
             <colgroup>
               <col className="w-1/2" />
               <col className="w-1/2" />
             </colgroup>
-            <tbody>
+            <tbody className="[&>tr>td]:py-2">
               <tr>
-                <td className="py-1">Total Solve Time (Seconds)</td>
-                <td className="py-1">{totalSeconds}</td>
+                <td>Seconds</td>
+                <td>
+                  <span className="inline-flex rounded-lg bg-emerald-500/15 px-3 py-1 font-semibold text-emerald-100">
+                    {totalSeconds}
+                  </span>
+                </td>
               </tr>
               <tr>
-                <td className="py-1">Total Solve Time (Minutes)</td>
-                <td className="py-1">{(totalSeconds / 60).toFixed(2)}</td>
+                <td>Minutes</td>
+                <td>
+                  <span className="inline-flex rounded-lg bg-sky-500/15 px-3 py-1 font-semibold text-sky-100">
+                    {(totalSeconds / 60).toFixed(2)}
+                  </span>
+                </td>
               </tr>
               <tr>
-                <td className="py-1">Total Solve Time (Hours)</td>
-                <td className="py-1">{(totalSeconds / 3600).toFixed(2)}</td>
+                <td>Hours</td>
+                <td>
+                  <span className="inline-flex rounded-lg bg-indigo-500/15 px-3 py-1 font-semibold text-indigo-100">
+                    {(totalSeconds / 3600).toFixed(2)}
+                  </span>
+                </td>
               </tr>
             </tbody>
           </table>
         </section>
 
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow overflow-auto">
-          <h3 className="text-xl font-semibold mb-4"> Top 10 Fastest Times 🏆 </h3>
-          <table className="w-full table-fixed text-left text-sm">
+        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <h3 className="mb-4 text-xl font-semibold">Top 10 Fastest Times</h3>
+          <table className="w-full table-fixed text-left text-sm text-white/80">
             <colgroup>
               <col className="w-1/2" />
               <col className="w-1/2" />
             </colgroup>
-            <thead>
+            <thead className="rounded-lg bg-gradient-to-r from-emerald-500/10 via-sky-500/10 to-indigo-500/10 text-white/80">
               <tr>
                 <th className="pb-2">Date</th>
                 <th className="pb-2">Time</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="[&>tr:nth-child(even)]:bg-white/5 [&>tr>td]:py-2">
               {topFastest.map((item, i) => (
                 <tr key={i}>
-                  <td className="py-1">{formatDate(item.date)}</td>
-                  <td className="py-1">{fmt(item.time_seconds)}</td>
+                  <td className="text-white/90">{formatDate(item.date)}</td>
+                  <td className="font-semibold text-emerald-100">{fmt(item.time_seconds)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
 
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow overflow-auto">
-          <h3 className="text-xl font-semibold mb-4"> Top 10 Slowest Times 🐢 </h3>
-          <table className="w-full table-fixed text-left text-sm">
+        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+          <h3 className="mb-4 text-xl font-semibold">Top 10 Slowest Times</h3>
+          <table className="w-full table-fixed text-left text-sm text-white/80">
             <colgroup>
               <col className="w-1/2" />
               <col className="w-1/2" />
             </colgroup>
-            <thead>
+            <thead className="rounded-lg bg-gradient-to-r from-amber-500/12 via-rose-500/12 to-indigo-500/12 text-white/80">
               <tr>
                 <th className="pb-2">Date</th>
                 <th className="pb-2">Time</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="[&>tr:nth-child(even)]:bg-white/5 [&>tr>td]:py-2">
               {topSlowest.map((item, i) => (
                 <tr key={i}>
-                  <td className="py-1">{formatDate(item.date)}</td>
-                  <td className="py-1">{fmt(item.time_seconds)}</td>
+                  <td className="text-white/90">{formatDate(item.date)}</td>
+                  <td className="font-semibold text-amber-100">{fmt(item.time_seconds)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
-        
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-          <h3 className="text-xl font-semibold mb-4">Weekly Average</h3>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+          <h3 className="mb-4 text-xl font-semibold">Weekly Average</h3>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
               <LineChart data={weekly} margin={{ bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis
                   dataKey="period"
                   angle={-45}
                   textAnchor="end"
                   height={60}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.7)' }}
                 />
-                <YAxis tickFormatter={fmt} />
-                <Tooltip formatter={(value: number) => fmt(value)} />
+                <YAxis tickFormatter={fmt} tick={{ fill: 'rgba(255,255,255,0.7)' }} />
+                <Tooltip
+                  contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
+                  labelStyle={{ color: 'white' }}
+                  formatter={(value: number) => fmt(value)}
+                />
                 <Line
                   type="monotone"
                   dataKey="avg_time_seconds"
@@ -367,21 +385,25 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
-          <h3 className="text-xl font-semibold mb-4">Monthly Average</h3>
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+          <h3 className="mb-4 text-xl font-semibold">Monthly Average</h3>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
               <LineChart data={monthly} margin={{ bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis
                   dataKey="period"
                   angle={-45}
                   textAnchor="end"
                   height={60}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.7)' }}
                 />
-                <YAxis tickFormatter={fmt} />
-                <Tooltip formatter={(value: number) => fmt(value)} />
+                <YAxis tickFormatter={fmt} tick={{ fill: 'rgba(255,255,255,0.7)' }} />
+                <Tooltip
+                  contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
+                  labelStyle={{ color: 'white' }}
+                  formatter={(value: number) => fmt(value)}
+                />
                 <Line
                   type="monotone"
                   dataKey="avg_time_seconds"
