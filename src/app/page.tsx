@@ -1,13 +1,53 @@
 export const dynamic = 'force-dynamic';
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import Image from 'next/image'
 import NavPill from '@/components/NavPill'
 import Carousel3D from '@/components/Carousel3D'
 
 const AVATAR_FILE_KEY = 'solving.jpeg'
-let cachedAvatarUrl: { url: string; expiresAt: number } | null = null
-const SIGNED_URL_TTL_SECONDS = 60 * 30 // 30 minutes
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 48 // 48 hours
+type SignedUrlCacheEntry<T> = { value: T; expiresAt: number }
+type SignedUrlWithPath = { path: string; signedUrl: string | null }
+
+const signedUrlCache = new Map<string, SignedUrlCacheEntry<SignedUrlWithPath[]>>()
+
+const isCacheValid = <T>(entry?: SignedUrlCacheEntry<T>) => Boolean(entry && entry.expiresAt > Date.now())
+
+async function getSignedUrlsWithCache(
+  client: SupabaseClient,
+  bucket: string,
+  paths: string[],
+  ttlSeconds: number
+): Promise<SignedUrlWithPath[]> {
+  const cacheKey = `${bucket}:${paths.join('|')}:${ttlSeconds}`
+  const cached = signedUrlCache.get(cacheKey)
+
+  if (cached && isCacheValid(cached)) {
+    return cached.value
+  }
+
+  const { data, error } = await client.storage.from(bucket).createSignedUrls(paths, ttlSeconds)
+
+  if (error) {
+    console.error('Error creating signed URLs:', error.message)
+    return cached?.value ?? []
+  }
+
+  const results: SignedUrlWithPath[] =
+    data?.map((entry, idx) => ({
+      path: paths[idx] ?? `path-${idx}`,
+      signedUrl: entry?.signedUrl ?? null,
+    })) ?? []
+
+  const expiresAt = Date.now() + ttlSeconds * 1000
+
+  if (results.some((entry) => entry.signedUrl)) {
+    signedUrlCache.set(cacheKey, { value: results, expiresAt })
+  }
+
+  return results
+}
 
 export default async function HomePage() {
   const supabaseAdmin = createClient(
@@ -16,34 +56,23 @@ export default async function HomePage() {
   )
 
   let avatarUrl: string | null = null
-  const now = Date.now()
+  const avatarSigned = await getSignedUrlsWithCache(
+    supabaseAdmin,
+    'avatar',
+    [AVATAR_FILE_KEY],
+    SIGNED_URL_TTL_SECONDS
+  )
 
-  if (cachedAvatarUrl && cachedAvatarUrl.expiresAt > now) {
-    avatarUrl = cachedAvatarUrl.url
-  } else {
-    const { data: signedData, error: urlError } = await supabaseAdmin.storage
-      .from('avatar')
-      .createSignedUrl(AVATAR_FILE_KEY, SIGNED_URL_TTL_SECONDS)
-    if (urlError) {
-      console.error('Error creating signed URL:', urlError.message)
-    } else if (signedData?.signedUrl) {
-      avatarUrl = signedData.signedUrl
-      cachedAvatarUrl = {
-        url: signedData.signedUrl,
-        expiresAt: now + SIGNED_URL_TTL_SECONDS * 1000,
-      }
-    }
-  }
+  avatarUrl = avatarSigned?.[0]?.signedUrl ?? null
 
   const carouselKeys = Array.from({ length: 7 }, (_, i) => `${i + 1}.jpeg`)
 
-  const { data: carouselSigned, error: carouselError } = await supabaseAdmin.storage
-    .from('avatar')
-    .createSignedUrls(carouselKeys, SIGNED_URL_TTL_SECONDS)
-
-  if (carouselError) {
-    console.error('Error creating carousel signed URLs:', carouselError.message)
-  }
+  const carouselSigned = await getSignedUrlsWithCache(
+    supabaseAdmin,
+    'avatar',
+    carouselKeys,
+    SIGNED_URL_TTL_SECONDS
+  )
 
   let carouselImages =
     (carouselSigned?.map((entry, idx) =>
