@@ -35,36 +35,60 @@ export default async function HomePage() {
     }
   }
 
-  const carouselImages = [
-    {
-      src: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&q=80',
-      alt: 'Crossword grid and pencil',
-    },
-    {
-      src: 'https://images.unsplash.com/photo-1486946255434-2466348c2166?auto=format&fit=crop&w=800&q=80',
-      alt: 'Notebook with puzzle notes',
-    },
-    {
-      src: 'https://images.unsplash.com/photo-1504275107627-0c2ba7a43dba?auto=format&fit=crop&w=800&q=80',
-      alt: 'Morning coffee and puzzle time',
-    },
-    {
-      src: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80',
-      alt: 'Colorful desk with stationery',
-    },
-    {
-      src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
-      alt: 'Friends solving puzzles together',
-    },
-    {
-      src: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=800&q=80',
-      alt: 'Minimal workspace and tablet',
-    },
-    {
-      src: 'https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=800&q=80',
-      alt: 'Evening glow over workspace',
-    },
-  ]
+  const carouselKeys = Array.from({ length: 7 }, (_, i) => `${i + 1}.jpeg`)
+
+  const { data: carouselSigned, error: carouselError } = await supabaseAdmin.storage
+    .from('avatar')
+    .createSignedUrls(carouselKeys, SIGNED_URL_TTL_SECONDS)
+
+  if (carouselError) {
+    console.error('Error creating carousel signed URLs:', carouselError.message)
+  }
+
+  let carouselImages =
+    (carouselSigned?.map((entry, idx) =>
+      entry.signedUrl
+        ? {
+            src: entry.signedUrl,
+            alt: `Captured ${idx + 1}`,
+          }
+        : null
+    ) ?? []).filter(
+      (item): item is { src: string; alt: string } => Boolean(item?.src)
+    )
+
+  if (carouselImages.length === 0) {
+    carouselImages = [
+      {
+        src: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&q=80',
+        alt: 'Crossword grid and pencil',
+      },
+      {
+        src: 'https://images.unsplash.com/photo-1486946255434-2466348c2166?auto=format&fit=crop&w=800&q=80',
+        alt: 'Notebook with puzzle notes',
+      },
+      {
+        src: 'https://images.unsplash.com/photo-1504275107627-0c2ba7a43dba?auto=format&fit=crop&w=800&q=80',
+        alt: 'Morning coffee and puzzle time',
+      },
+      {
+        src: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80',
+        alt: 'Colorful desk with stationery',
+      },
+      {
+        src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
+        alt: 'Friends solving puzzles together',
+      },
+      {
+        src: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=800&q=80',
+        alt: 'Minimal workspace and tablet',
+      },
+      {
+        src: 'https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=800&q=80',
+        alt: 'Evening glow over workspace',
+      },
+    ]
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050b1c] text-slate-50">
@@ -79,16 +103,6 @@ export default async function HomePage() {
           <aside className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_25px_70px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
             <div className="absolute inset-y-4 left-3 w-px bg-gradient-to-b from-sky-400/70 via-indigo-300/60 to-transparent" />
             <div className="relative space-y-8">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-500 text-lg font-black">
-                  PT
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/60">Puzzle time</p>
-                  <p className="text-lg font-semibold text-white">Control Center</p>
-                </div>
-              </div>
-
               <nav className="space-y-3">
                 {[
                   { href: '/dashboard', label: 'Dashboard' },
@@ -106,10 +120,6 @@ export default async function HomePage() {
                   </Link>
                 ))}
               </nav>
-
-              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-white/0 p-4 text-xs text-white/70">
-                Stay synced across pages with the left rail or the floating menu.
-              </div>
             </div>
           </aside>
 
