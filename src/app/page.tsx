@@ -12,7 +12,7 @@ type SignedUrlWithPath = { path: string; signedUrl: string | null }
 
 const signedUrlCache = new Map<string, SignedUrlCacheEntry<SignedUrlWithPath[]>>()
 
-const isCacheValid = <T>(entry?: SignedUrlCacheEntry<T>) => Boolean(entry && entry.expiresAt > Date.now())
+const isCacheValid = <T,>(entry?: SignedUrlCacheEntry<T>) => Boolean(entry && entry.expiresAt > Date.now())
 
 async function getSignedUrlsWithCache(
   client: SupabaseClient,
