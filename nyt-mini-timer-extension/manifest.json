@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "NYT Mini Timer Peek",
+  "description": "Shows the current NYT Mini timer and puzzle date from the active tab.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "NYT Mini Timer"
+  },
+  "permissions": ["tabs", "storage", "scripting", "activeTab"],
+  "host_permissions": [
+    "https://www.nytimes.com/crosswords/game/mini/*",
+    "http://localhost:3000/*" ,
+    "https://*.mr007.live/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.nytimes.com/crosswords/game/mini/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:3000/*",
+        "https://*.mr007.live/*"
+      ],
+      "js": ["supabase-token.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

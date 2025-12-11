@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NYT Mini Timer</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        min-width: 240px;
+        background: linear-gradient(135deg, #0b1f3f, #122b57);
+        color: #f3f6ff;
+      }
+      .card {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 8px;
+        font-weight: 700;
+      }
+      .label {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #c7d8ff;
+      }
+      .value {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 6px 0 10px;
+      }
+      .error {
+        color: #f8c8c8;
+        font-size: 13px;
+      }
+      .hint {
+        font-size: 12px;
+        color: #c7d8ff;
+        margin-top: 6px;
+      }
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #16a34a, #22d3ee);
+        color: #0b1224;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 12px 30px rgba(34, 211, 238, 0.3);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 10px;
+      }
+      input {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 8px 10px;
+        background: rgba(8, 12, 28, 0.6);
+        color: #f3f6ff;
+      }
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .subtle {
+        font-size: 11px;
+        color: #94a8d6;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .row button {
+        flex: 1;
+        margin-top: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>NYT Mini Snapshot</h1>
+      <div class="label">Puzzle date</div>
+      <div id="puzzle-date" class="value">—</div>
+      <div class="label">Timer</div>
+      <div id="timer-value" class="value">—</div>
+      <div id="status" class="hint">Open the Mini tab and click Refresh.</div>
+      <div class="row">
+        <button id="refresh">Refresh</button>
+        <button id="submit">Submit</button>
+      </div>
+      <div class="field">
+        <label class="label">Manual date (YYYY-MM-DD, optional)</label>
+        <input id="manual-date" type="text" placeholder="2025-12-08" />
+      </div>
+      <div class="field">
+        <label class="label">Manual time (MM:SS, optional)</label>
+        <input id="manual-time" type="text" placeholder="01:23" />
+      </div>
+      <div class="field">
+        <label class="label">API URL</label>
+        <input id="api-url" type="text" placeholder="http://localhost:3000/api/auto-log" />
+      </div>
+      <div class="field">
+        <label class="label">Bearer token</label>
+        <input id="api-token" type="password" placeholder="Supabase access_token" />
+        <div class="subtle">Paste your Supabase access_token from the tracker app.</div>
+      </div>
+      <button id="save-settings">Save settings</button>
+      <div class="field">
+        <label class="label">Recent submissions</label>
+        <div id="history-list" class="subtle" style="max-height: 180px; overflow-y: auto;"></div>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
