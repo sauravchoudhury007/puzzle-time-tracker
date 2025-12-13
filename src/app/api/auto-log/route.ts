@@ -14,6 +14,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 const allowedOrigins = [
   process.env.CORS_ORIGIN ?? 'https://sharvaniandsauravplayminis.mr007.live',
   process.env.CORS_EXTENSION_ORIGIN ?? 'chrome-extension://nagiconhkfiolipdggbjeibpmcjhdmko',
+  process.env.CORS_EXTENSION_ORIGIN ?? 'chrome-extension://oonicakajciodpnliikkogmoigijkldf',
 ].filter(Boolean)
 
 const buildCorsHeaders = (origin: string | null) => {
