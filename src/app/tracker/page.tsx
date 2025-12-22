@@ -319,14 +319,11 @@ export default function TrackerPage() {
 
   const handleDayClick = (day: DayCell) => {
     if (!day.isActive || !day.date) return
-    const dt = parseDateKey(day.date)
-    const year = dt.getUTCFullYear()
-    const month = dt.getUTCMonth() + 1
-    const dayOfMonth = dt.getUTCDate()
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(LAST_SELECTED_PUZZLE_DATE_KEY, day.date)
     }
-    const url = `https://www.nytimes.com/crosswords/game/mini/${year}/${month}/${dayOfMonth}`
+    const datePath = day.date.replace(/-/g, '/')
+    const url = `https://www.nytimes.com/crosswords/game/mini/${datePath}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
