@@ -20,7 +20,7 @@ export default function ColorsPage() {
             levels: Array.from({ length: 20 }, () => Math.floor(Math.random() * 4) + 1),
         }))
         setData(newData)
-    }, []) // Run once on mount
+    }, [years]) // Run once on mount
 
     if (!mounted) return null
 

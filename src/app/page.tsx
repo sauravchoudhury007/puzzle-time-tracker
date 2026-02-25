@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import Image from 'next/image'
-import NavPill from '@/components/NavPill'
 import Carousel3D from '@/components/Carousel3D'
 
 const AVATAR_FILE_KEY = 'solving.jpeg'
@@ -78,9 +77,9 @@ export default async function HomePage() {
     (carouselSigned?.map((entry, idx) =>
       entry.signedUrl
         ? {
-            src: entry.signedUrl,
-            alt: `Captured ${idx + 1}`,
-          }
+          src: entry.signedUrl,
+          alt: `Captured ${idx + 1}`,
+        }
         : null
     ) ?? []).filter(
       (item): item is { src: string; alt: string } => Boolean(item?.src)

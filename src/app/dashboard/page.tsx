@@ -353,7 +353,7 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8">
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
           <h3 className="mb-4 text-xl font-semibold">Weekly Average</h3>
           <div style={{ width: '100%', height: 300 }}>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
                 <Tooltip
                   contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
                   labelStyle={{ color: 'white' }}
-                  formatter={(value: number) => fmt(value)}
+                  formatter={(value: unknown) => fmt(Number(value))}
                 />
                 <Line
                   type="monotone"
@@ -402,7 +402,7 @@ export default function DashboardPage() {
                 <Tooltip
                   contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
                   labelStyle={{ color: 'white' }}
-                  formatter={(value: number) => fmt(value)}
+                  formatter={(value: unknown) => fmt(Number(value))}
                 />
                 <Line
                   type="monotone"
