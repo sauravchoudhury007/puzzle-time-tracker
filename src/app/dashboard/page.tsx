@@ -10,6 +10,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  BarChart,
+  Bar,
+  Cell,
 } from 'recharts'
 import NavPill from '@/components/NavPill'
 
@@ -21,6 +24,8 @@ interface Summary {
 interface TimeBucket {
   period: string
   avg_time_seconds: number
+  moving_avg_7?: number
+  moving_avg_30?: number
 }
 
 interface PuzzleTime {
@@ -34,6 +39,11 @@ interface DistributionBucket {
   count: number
 }
 
+interface DayOfWeekBucket {
+  day: string
+  avg_time_seconds: number
+}
+
 interface DashboardData {
   summary: Summary | null
   weekly: TimeBucket[]
@@ -41,6 +51,7 @@ interface DashboardData {
   topFastest: PuzzleTime[]
   topSlowest: PuzzleTime[]
   distribution: DistributionBucket[]
+  dayOfWeekStats: DayOfWeekBucket[]
   totalSeconds: number
 }
 
@@ -73,6 +84,62 @@ async function fetchDashboardData(): Promise<DashboardData> {
     avg_time_seconds: item.avg_time_seconds,
   }))
 
+  const { data: allTimes } = await supabase
+    .from('puzzle_times')
+    .select('date, time_seconds')
+    .order('date', { ascending: true })
+
+  // Calculate moving averages for weekly buckets
+  if (allTimes && allTimes.length > 0) {
+    weekly.forEach((wkBucket) => {
+      const bucketDate = new Date(wkBucket.period)
+      // 7-day window ending at bucket start
+      const windowStart = new Date(bucketDate)
+      windowStart.setUTCDate(windowStart.getUTCDate() - 6)
+      
+      const inWindow = allTimes.filter((t) => {
+          const d = new Date(t.date)
+          return d >= windowStart && d <= bucketDate
+      })
+      
+      if (inWindow.length > 0) {
+          const sum = inWindow.reduce((acc, curr) => acc + curr.time_seconds, 0)
+          wkBucket.moving_avg_7 = sum / inWindow.length
+      }
+
+      // 30-day window ending at bucket start
+      const windowStart30 = new Date(bucketDate)
+      windowStart30.setUTCDate(windowStart30.getUTCDate() - 29)
+      
+      const inWindow30 = allTimes.filter((t) => {
+          const d = new Date(t.date)
+          return d >= windowStart30 && d <= bucketDate
+      })
+      
+      if (inWindow30.length > 0) {
+          const sum = inWindow30.reduce((acc, curr) => acc + curr.time_seconds, 0)
+          wkBucket.moving_avg_30 = sum / inWindow30.length
+      }
+    })
+    
+     monthly.forEach((moBucket) => {
+      const bucketDate = new Date(moBucket.period)
+      // 30-day window ending at bucket start
+      const windowStart30 = new Date(bucketDate)
+      windowStart30.setUTCDate(windowStart30.getUTCDate() - 29)
+      
+      const inWindow30 = allTimes.filter((t) => {
+          const d = new Date(t.date)
+          return d >= windowStart30 && d <= bucketDate
+      })
+      
+      if (inWindow30.length > 0) {
+          const sum = inWindow30.reduce((acc, curr) => acc + curr.time_seconds, 0)
+          moBucket.moving_avg_30 = sum / inWindow30.length
+      }
+    })
+  }
+
   const { data: fastest } = await supabase
     .from('puzzle_times')
     .select('date, time_seconds')
@@ -85,14 +152,14 @@ async function fetchDashboardData(): Promise<DashboardData> {
     .order('time_seconds', { ascending: false })
     .limit(10)
 
-  const { data: allTimes } = await supabase
-    .from('puzzle_times')
-    .select('time_seconds')
-
   let totalSeconds = 0
+  let dayOfWeekStats: DayOfWeekBucket[] = []
   let distribution: DistributionBucket[] = []
 
   if (allTimes) {
+    const dowSums = [0, 0, 0, 0, 0, 0, 0] // Sun-Sat
+    const dowCounts = [0, 0, 0, 0, 0, 0, 0]
+
     const counts = {
       '<1': 0,
       '1-2': 0,
@@ -104,6 +171,15 @@ async function fetchDashboardData(): Promise<DashboardData> {
 
     allTimes.forEach(item => {
       totalSeconds += item.time_seconds
+      
+      // Calculate DOW (Date parses as UTC midnight correctly if format is YYYY-MM-DD)
+      const d = new Date(item.date)
+      if (!isNaN(d.getTime())) {
+          const day = d.getUTCDay()
+          dowSums[day] += item.time_seconds
+          dowCounts[day]++
+      }
+
       const s = item.time_seconds
       if (s <= 60) counts['<1']++
       else if (s <= 120) counts['1-2']++
@@ -122,6 +198,14 @@ async function fetchDashboardData(): Promise<DashboardData> {
       { label: '4 – 5 min', percent: (counts['4-5'] / total) * 100, count: counts['4-5'] },
       { label: '> 5 min', percent: (counts['>5'] / total) * 100, count: counts['>5'] },
     ]
+    const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    // Reorder so Monday is first
+    const reorderedIndices = [1, 2, 3, 4, 5, 6, 0]
+    
+    dayOfWeekStats = reorderedIndices.map(i => ({
+        day: daysArr[i],
+        avg_time_seconds: dowCounts[i] > 0 ? dowSums[i] / dowCounts[i] : 0
+    }))
   }
 
   return {
@@ -131,6 +215,7 @@ async function fetchDashboardData(): Promise<DashboardData> {
     topFastest: fastest || [],
     topSlowest: slowest || [],
     distribution,
+    dayOfWeekStats,
     totalSeconds,
   }
 }
@@ -142,7 +227,14 @@ export default function DashboardPage() {
   const [topFastest, setTopFastest] = useState<PuzzleTime[]>(() => cachedDashboardData?.topFastest ?? [])
   const [topSlowest, setTopSlowest] = useState<PuzzleTime[]>(() => cachedDashboardData?.topSlowest ?? [])
   const [distribution, setDistribution] = useState<DistributionBucket[]>(() => cachedDashboardData?.distribution ?? [])
+  const [dayOfWeekStats, setDayOfWeekStats] = useState<DayOfWeekBucket[]>(() => cachedDashboardData?.dayOfWeekStats ?? [])
   const [totalSeconds, setTotalSeconds] = useState<number>(() => cachedDashboardData?.totalSeconds ?? 0)
+
+  // Raw data needed to recalculate day of week stats on the fly when filtered
+  const [allTimesData, setAllTimesData] = useState<{date: string, time_seconds: number}[]>([])
+
+  // Filters: '1m', '3m', '6m', '1y', 'all'
+  const [chartFilter, setChartFilter] = useState<string>('all')
 
   useEffect(() => {
     let isMounted = true
@@ -174,7 +266,13 @@ export default function DashboardPage() {
         setTopFastest(data.topFastest)
         setTopSlowest(data.topSlowest)
         setDistribution(data.distribution)
+        setDayOfWeekStats(data.dayOfWeekStats)
         setTotalSeconds(data.totalSeconds)
+        
+        // Also fire off a quick supplemental query just to store all raw times for DOW recalculations
+        supabase.from('puzzle_times').select('date, time_seconds').order('date', { ascending: true }).then((res) => {
+            if (res.data) setAllTimesData(res.data)
+        })
       })
       .catch(() => {
         // Errors are logged above; keep the existing state untouched.
@@ -206,6 +304,67 @@ export default function DashboardPage() {
       timeZone: 'UTC',
     })
   }
+
+  // Filter Logic
+  const filterByDate = <T extends { period: string }>(dataArray: T[], filterStr: string): T[] => {
+    if (filterStr === 'all') return dataArray
+    const now = new Date()
+    const cutoff = new Date(now)
+    
+    if (filterStr === '1m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 1)
+    else if (filterStr === '3m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 3)
+    else if (filterStr === '6m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 6)
+    else if (filterStr === '1y') cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1)
+    
+    return dataArray.filter(item => {
+       const rowDate = new Date(item.period)
+       return rowDate >= cutoff
+    })
+  }
+
+  const filteredWeekly = filterByDate(weekly, chartFilter)
+  const filteredMonthly = filterByDate(monthly, chartFilter)
+
+  // Recalculate DOW based on raw data
+  const filteredDayOfWeekStats = (() => {
+    if (allTimesData.length === 0) return dayOfWeekStats // Fallback to initial if still loading raw
+    if (chartFilter === 'all') return dayOfWeekStats
+
+    const now = new Date()
+    const cutoff = new Date(now)
+    if (chartFilter === '1m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 1)
+    else if (chartFilter === '3m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 3)
+    else if (chartFilter === '6m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 6)
+    else if (chartFilter === '1y') cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1)
+
+    const dowSums = [0, 0, 0, 0, 0, 0, 0]
+    const dowCounts = [0, 0, 0, 0, 0, 0, 0]
+
+    allTimesData.forEach(item => {
+        const d = new Date(item.date)
+        if (!isNaN(d.getTime()) && d >= cutoff) {
+            const day = d.getUTCDay()
+            dowSums[day] += item.time_seconds
+            dowCounts[day]++
+        }
+    })
+
+    const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const reorderedIndices = [1, 2, 3, 4, 5, 6, 0]
+    
+    return reorderedIndices.map(i => ({
+        day: daysArr[i],
+        avg_time_seconds: dowCounts[i] > 0 ? dowSums[i] / dowCounts[i] : 0
+    }))
+  })()
+
+  const timeFilters = [
+    { value: '1m', label: '1M' },
+    { value: '3m', label: '3M' },
+    { value: '6m', label: '6M' },
+    { value: '1y', label: '1Y' },
+    { value: 'all', label: 'All' }
+  ]
 
   return (
     <main className="relative mx-auto min-h-screen max-w-6xl space-y-10 px-5 py-16">
@@ -351,14 +510,66 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </section>
+
+        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl md:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <h3 className="text-xl font-semibold">Average by Day of the Week</h3>
+            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                {timeFilters.map(f => (
+                    <button 
+                       key={f.value}
+                       onClick={() => setChartFilter(f.value)}
+                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${chartFilter === f.value ? 'bg-sky-500/80 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+          </div>
+          <div style={{ width: '100%', height: 350 }}>
+            <ResponsiveContainer>
+              <BarChart data={filteredDayOfWeekStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                <XAxis dataKey="day" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 13 }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={fmt} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 13 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                  contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white' }}
+                  formatter={(value: unknown) => [fmt(Number(value)), 'Average Time']}
+                />
+                <Bar dataKey="avg_time_seconds" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                  {
+                    filteredDayOfWeekStats.map((entry, index) => {
+                      const colors = ['#38bdf8', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185']
+                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                    })
+                  }
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
-          <h3 className="mb-4 text-xl font-semibold">Weekly Average</h3>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <h3 className="text-xl font-semibold">Weekly Average</h3>
+            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                {timeFilters.map(f => (
+                    <button 
+                       key={f.value}
+                       onClick={() => setChartFilter(f.value)}
+                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${chartFilter === f.value ? 'bg-sky-500/80 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+          </div>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
-              <LineChart data={weekly} margin={{ bottom: 60 }}>
+              <LineChart data={filteredWeekly} margin={{ bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis
                   dataKey="period"
@@ -371,7 +582,7 @@ export default function DashboardPage() {
                 <Tooltip
                   contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
                   labelStyle={{ color: 'white' }}
-                  formatter={(value: unknown) => fmt(Number(value))}
+                  formatter={(value: unknown, name: string | undefined) => [fmt(Number(value)), name === 'avg_time_seconds' ? 'Weekly Avg' : name === 'moving_avg_30' ? '30-Day Trend' : '7-Day Trend']}
                 />
                 <Line
                   type="monotone"
@@ -379,6 +590,16 @@ export default function DashboardPage() {
                   stroke="#10B981"
                   strokeWidth={2}
                   dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="moving_avg_30"
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  activeDot={{ r: 5 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -386,10 +607,23 @@ export default function DashboardPage() {
         </section>
 
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
-          <h3 className="mb-4 text-xl font-semibold">Monthly Average</h3>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <h3 className="text-xl font-semibold">Monthly Average</h3>
+            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                {timeFilters.map(f => (
+                    <button 
+                       key={f.value}
+                       onClick={() => setChartFilter(f.value)}
+                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${chartFilter === f.value ? 'bg-sky-500/80 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+          </div>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
-              <LineChart data={monthly} margin={{ bottom: 60 }}>
+              <LineChart data={filteredMonthly} margin={{ bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis
                   dataKey="period"
@@ -402,7 +636,7 @@ export default function DashboardPage() {
                 <Tooltip
                   contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
                   labelStyle={{ color: 'white' }}
-                  formatter={(value: unknown) => fmt(Number(value))}
+                  formatter={(value: unknown, name: string | undefined) => [fmt(Number(value)), name === 'avg_time_seconds' ? 'Monthly Avg' : '30-Day Trend']}
                 />
                 <Line
                   type="monotone"
@@ -410,6 +644,16 @@ export default function DashboardPage() {
                   stroke="#3B82F6"
                   strokeWidth={2}
                   dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="moving_avg_30"
+                  stroke="#8B5CF6"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  activeDot={{ r: 5 }}
                 />
               </LineChart>
             </ResponsiveContainer>

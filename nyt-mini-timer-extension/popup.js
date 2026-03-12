@@ -5,6 +5,7 @@ const refreshBtn = document.getElementById('refresh')
 const submitBtn = document.getElementById('submit')
 const apiUrlInput = document.getElementById('api-url')
 const apiTokenInput = document.getElementById('api-token')
+const tokenExpiryEl = document.getElementById('token-expiry')
 const saveBtn = document.getElementById('save-settings')
 const manualDateInput = document.getElementById('manual-date')
 const manualTimeInput = document.getElementById('manual-time')
@@ -38,6 +39,44 @@ const parseTimerToSeconds = timerText => {
   return minutes * 60 + seconds
 }
 
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(base64))
+  } catch (e) {
+    return null
+  }
+}
+
+const updateTokenExpiry = () => {
+  if (!tokenExpiryEl) return
+  const token = (apiTokenInput.value || '').trim()
+  if (!token) {
+    tokenExpiryEl.textContent = ''
+    return
+  }
+  const payload = parseJwt(token)
+  if (payload && payload.exp) {
+    const expDate = new Date(payload.exp * 1000)
+    const now = new Date()
+    if (now > expDate) {
+      tokenExpiryEl.textContent = 'Token expired!'
+      tokenExpiryEl.style.color = '#f8c8c8'
+    } else {
+      const diffMins = Math.round((expDate - now) / 60000)
+      const hours = Math.floor(diffMins / 60)
+      const maxMins = diffMins % 60
+      const durationStr = hours > 0 ? `${hours}h ${maxMins}m` : `${diffMins}m`
+      tokenExpiryEl.textContent = `Expires in ~${durationStr} (${expDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`
+      tokenExpiryEl.style.color = '#c7d8ff'
+    }
+  } else {
+    tokenExpiryEl.textContent = 'Invalid token format'
+    tokenExpiryEl.style.color = '#f8c8c8'
+  }
+}
+
 const getSettings = async () => {
   if (chrome?.storage?.local) {
     return chrome.storage.local.get(['apiUrl', 'apiToken'])
@@ -69,6 +108,15 @@ const loadSettings = async () => {
     const { apiUrl, apiToken } = await getSettings()
     apiUrlInput.value = apiUrl || DEFAULT_API_URL
     apiTokenInput.value = apiToken || ''
+    updateTokenExpiry()
+
+    // Attempt to grab a fresh token immediately unconditionally
+    const freshToken = await fetchTokenFromTrackerTab()
+    if (freshToken) {
+      apiTokenInput.value = freshToken
+      await setSettings({ apiUrl: apiUrlInput.value, apiToken: freshToken })
+      updateTokenExpiry()
+    }
   } catch (err) {
     console.warn('NYT Mini Timer: failed to load settings', err)
     apiUrlInput.value = DEFAULT_API_URL
@@ -245,14 +293,14 @@ const maybeSendToApi = async () => {
     statusEl.textContent = 'No timer yet. Hit Refresh or enter one manually.'
     return
   }
-  let token = (apiTokenInput.value || '').trim()
-  if (!token) {
-    statusEl.textContent = 'Looking for Supabase token…'
-    token = (await fetchTokenFromTrackerTab()) || ''
-    if (token) {
-      apiTokenInput.value = token
-      await chrome.storage.local.set({ apiToken: token }).catch(() => {})
-    }
+  statusEl.textContent = 'Looking for Supabase token…'
+  const grabbedToken = await fetchTokenFromTrackerTab()
+  let token = grabbedToken || (apiTokenInput.value || '').trim()
+
+  if (grabbedToken) {
+    apiTokenInput.value = grabbedToken
+    await setSettings({ apiUrl: apiUrlInput.value || DEFAULT_API_URL, apiToken: grabbedToken })
+    updateTokenExpiry()
   }
 
   if (!token) {
@@ -301,6 +349,7 @@ const maybeSendToApi = async () => {
 refreshBtn.addEventListener('click', fetchTimer)
 submitBtn.addEventListener('click', maybeSendToApi)
 saveBtn.addEventListener('click', saveSettings)
+apiTokenInput.addEventListener('input', updateTokenExpiry)
 document.addEventListener('DOMContentLoaded', fetchTimer)
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings()
