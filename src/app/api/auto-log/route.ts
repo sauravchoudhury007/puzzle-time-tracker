@@ -12,7 +12,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10)
 // Lock CORS to your site and extension only.
 // You can override via env: CORS_ORIGIN and CORS_EXTENSION_ORIGIN.
 const allowedOrigins = [
-  process.env.CORS_ORIGIN ?? 'https://sharvaniandsauravplayminis.mr007.live',
+  process.env.CORS_ORIGIN ?? 'https://sharvaniandsauravplayminis.mr007.ca',
   process.env.CORS_EXTENSION_ORIGIN ?? 'chrome-extension://nagiconhkfiolipdggbjeibpmcjhdmko',
   process.env.CORS_EXTENSION_ORIGIN ?? 'chrome-extension://oonicakajciodpnliikkogmoigijkldf',
 ].filter(Boolean)

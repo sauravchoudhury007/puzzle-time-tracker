@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { LAST_SELECTED_PUZZLE_DATE_KEY } from '@/lib/storageKeys'
 import NavPill from '@/components/NavPill'
+import { toDateKey, parseDateKey, addDays } from '@/lib/dateUtils'
 import {
   BASE_LEVEL_0_CLASS,
   DYNAMIC_CELL_CLASS,
@@ -30,29 +31,9 @@ type CalendarGrid = {
 
 const START_DATE = new Date(Date.UTC(2014, 7, 21)) // August is month index 7
 
-
-
-function toDateKey(date: Date): string {
-  const year = date.getUTCFullYear()
-  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0')
-  const day = date.getUTCDate().toString().padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function parseDateKey(key: string): Date {
-  const [year, month, day] = key.split('-').map(Number)
-  return new Date(Date.UTC(year, month - 1, day))
-}
-
 function getTodayUtc(): Date {
   const now = new Date()
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
-}
-
-function addDays(date: Date, days: number): Date {
-  const next = new Date(date)
-  next.setUTCDate(next.getUTCDate() + days)
-  return next
 }
 
 function startOfWeek(date: Date): Date {

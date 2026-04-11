@@ -17,8 +17,8 @@ Small MV3 extension that reads the visible timer on an open NYT Mini puzzle tab 
    - Current on-page timer text (from the `.timer-count` element).
 3) If you change tabs or the timer updates, click **Refresh** to pull the latest value.
 4) To log straight into your tracker API:
-   - The extension now auto-grabs your Supabase `access_token` from the tracker site if you have a tab open on it (`https://*.mr007.live` or `http://localhost:3000`). If it can’t find one, you can still paste it manually.
-   - Set API URL if needed (defaults to `https://*.mr007.live/api/auto-log`; `http://localhost:3000/api/auto-log` also works).
+   - The extension now auto-grabs your Supabase `access_token` from the tracker site if you have a tab open on it (`https://*.mr007.ca` or `http://localhost:3000`). If it can’t find one, you can still paste it manually.
+   - Set API URL if needed (defaults to `https://*.mr007.ca/api/auto-log`; `http://localhost:3000/api/auto-log` also works).
    - Click **Save settings** if you change the URL/token.
    - Use **Refresh** to pull the timer/date, then **Submit** to send it to the API.
 

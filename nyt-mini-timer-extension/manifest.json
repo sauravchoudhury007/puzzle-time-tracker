@@ -7,24 +7,35 @@
     "default_popup": "popup.html",
     "default_title": "NYT Mini Timer"
   },
-  "permissions": ["tabs", "storage", "scripting", "activeTab"],
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
   "host_permissions": [
     "https://www.nytimes.com/crosswords/game/mini/*",
-    "http://localhost:3000/*" ,
-    "https://*.mr007.live/*"
+    "http://localhost:3000/*",
+    "https://*.mr007.ca/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://www.nytimes.com/crosswords/game/mini/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://www.nytimes.com/crosswords/game/mini/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": [
         "http://localhost:3000/*",
-        "https://*.mr007.live/*"
+        "https://*.mr007.ca/*"
       ],
-      "js": ["supabase-token.js"],
+      "js": [
+        "supabase-token.js"
+      ],
       "run_at": "document_idle"
     }
   ]

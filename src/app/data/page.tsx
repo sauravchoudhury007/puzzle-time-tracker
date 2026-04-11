@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import NavPill from '@/components/NavPill';
+import { toDateKey, parseDateKey, addDays } from '@/lib/dateUtils';
 
 export default function DataPage() {
   const [loadingExport, setLoadingExport] = useState(false);
@@ -41,9 +42,13 @@ export default function DataPage() {
     try {
       const text = await file.text();
       const lines = text.trim().split('\n');
-      const [header, ...rows] = lines;
-      if (header.trim() !== 'date,time_seconds') {
-        setImportError('Invalid CSV header. Expected: date,time_seconds');
+      const [headerLine, ...rows] = lines;
+      const headers = headerLine.trim().split(',');
+      const dateIndex = headers.indexOf('date');
+      const timeSecondsIndex = headers.indexOf('time_seconds');
+
+      if (dateIndex === -1 || timeSecondsIndex === -1) {
+        setImportError('Invalid CSV header. Must contain "date" and "time_seconds".');
         setLoadingImport(false);
         return;
       }
@@ -51,8 +56,13 @@ export default function DataPage() {
       const toUpsert = [];
       const errors: string[] = [];
       for (const [idx, line] of rows.entries()) {
-        const [date, secondsStr] = line.split(',');
+        const parts = line.split(',');
+        const date = parts[dateIndex];
+        const secondsStr = parts[timeSecondsIndex];
+        
         if (!date || !secondsStr || isNaN(Number(secondsStr))) {
+          // Skip empty rows or invalid formats
+          if (date && (!secondsStr || isNaN(Number(secondsStr)))) continue; 
           errors.push(`Line ${idx + 2}: invalid format`);
           continue;
         }
@@ -83,13 +93,48 @@ export default function DataPage() {
       .from('puzzle_times')
       .select('date, time_seconds')
       .order('date', { ascending: true });
+    
     if (error || !data) {
       setImportError(error?.message || 'Export failed');
       setLoadingExport(false);
       return;
     }
-    const header = 'date,time_seconds';
-    const csvRows = data.map(row => `${row.date},${row.time_seconds}`);
+
+    if (data.length === 0) {
+      setImportError('No data found to export');
+      setLoadingExport(false);
+      return;
+    }
+
+    const firstDate = parseDateKey(data[0].date.slice(0, 10));
+    const lastDate = parseDateKey(data[data.length - 1].date.slice(0, 10));
+    
+    const dataMap = new Map(
+      data.map(row => [row.date.slice(0, 10), row.time_seconds])
+    );
+
+    const header = 'date,Solved Time,time_seconds';
+    const csvRows: string[] = [];
+
+    let current = firstDate;
+    while (current <= lastDate) {
+      const key = toDateKey(current);
+      const timeSeconds = dataMap.get(key);
+      
+      let row = `${key},`;
+      if (timeSeconds !== undefined && timeSeconds !== null) {
+        const minutes = Math.floor(timeSeconds / 60);
+        const seconds = timeSeconds % 60;
+        const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        // Prepend a tab character to force Excel to treat this as text
+        row += `\t${formattedTime},${timeSeconds}`;
+      } else {
+        row += ',';
+      }
+      csvRows.push(row);
+      current = addDays(current, 1);
+    }
+
     const csvString = [header, ...csvRows].join('\n');
     const blob = new Blob([csvString], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -114,7 +159,8 @@ export default function DataPage() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-white">Export your data</h2>
             <p className="text-sm text-white/70">
-              Generates a CSV ordered by date. Perfect for spreadsheets or moving to another tracker.
+              Generates a CSV with all dates from your first to last entry. 
+              Includes a formatted `Solved Time` (M:SS) and time in seconds.
             </p>
             <button
               onClick={handleExport}
@@ -128,7 +174,7 @@ export default function DataPage() {
           <div className="space-y-4 rounded-2xl border border-white/10 bg-[#0c182e]/80 p-6 shadow-inner backdrop-blur-xl">
             <h2 className="text-xl font-semibold text-white">Import a CSV</h2>
             <p className="text-sm text-white/70">
-              Uses RLS with your session. Accepts `date,time_seconds` rows and upserts by date.
+              Uses RLS with your session. Accepts CSV with `date` and `time_seconds` columns.
             </p>
             <label className="flex flex-col gap-2 text-sm text-white/80">
               <span className="text-xs uppercase tracking-[0.18em] text-white/60">Upload CSV</span>

@@ -11,7 +11,7 @@ const manualDateInput = document.getElementById('manual-date')
 const manualTimeInput = document.getElementById('manual-time')
 const historyList = document.getElementById('history-list')
 
-const DEFAULT_API_URL = 'https://*.mr007.live/api/auto-log'
+const DEFAULT_API_URL = 'https://*.mr007.ca/api/auto-log'
 let lastTimer = null
 let lastDate = null
 let history = []
@@ -68,7 +68,7 @@ const updateTokenExpiry = () => {
       const hours = Math.floor(diffMins / 60)
       const maxMins = diffMins % 60
       const durationStr = hours > 0 ? `${hours}h ${maxMins}m` : `${diffMins}m`
-      tokenExpiryEl.textContent = `Expires in ~${durationStr} (${expDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`
+      tokenExpiryEl.textContent = `Expires in ~${durationStr} (${expDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
       tokenExpiryEl.style.color = '#c7d8ff'
     }
   } else {
@@ -226,7 +226,7 @@ const fetchTimer = async () => {
 const fetchTokenFromTrackerTab = async () => {
   const candidateUrls = [
     'http://localhost:3000/*',
-    'https://*.mr007.live/*',
+    'https://*.mr007.ca/*',
   ]
   const tabs = await chrome.tabs.query({ url: candidateUrls })
   const targetTab = tabs[0]
