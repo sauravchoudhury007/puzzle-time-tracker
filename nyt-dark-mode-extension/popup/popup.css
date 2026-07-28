@@ -1,0 +1,135 @@
+:root {
+  --bg: #1b1c1f;
+  --surface: #26282c;
+  --surface-2: #303237;
+  --text: #ececec;
+  --dim: #9aa0a6;
+  --accent: #f7da21;
+  --border: #3a3d42;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  width: 296px;
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+.pp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px;
+}
+.pp-logo {
+  font-size: 24px;
+}
+.pp-head h1 {
+  margin: 0;
+  font-size: 15px;
+}
+.pp-head p {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: var(--dim);
+}
+.pp-section {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+}
+.pp-section h2 {
+  margin: 2px 0 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--dim);
+}
+.pp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  gap: 8px;
+}
+.pp-row span {
+  flex: 1;
+}
+.pp-row em {
+  color: var(--dim);
+  font-style: normal;
+  font-size: 11px;
+}
+.pp-master span {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Toggle switch */
+.pp-switch {
+  appearance: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 22px;
+  background: var(--surface-2);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex: 0 0 auto;
+}
+.pp-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c8c8c8;
+  transition: transform 0.15s, background 0.15s;
+}
+.pp-switch:checked {
+  background: var(--accent);
+}
+.pp-switch:checked::after {
+  transform: translateX(16px);
+  background: #1a1a00;
+}
+
+/* Segmented control */
+.pp-seg {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pp-seg button {
+  border: 0;
+  background: transparent;
+  color: var(--dim);
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pp-seg button.active {
+  background: var(--accent);
+  color: #1a1a00;
+  font-weight: 600;
+}
+
+.pp-foot {
+  padding: 10px 16px 14px;
+  font-size: 10.5px;
+  color: var(--dim);
+  border-top: 1px solid var(--border);
+}
+
+/* Dim the games list / extras when master is off */
+body.master-off #games-section,
+body.master-off .pp-seg {
+  opacity: 0.45;
+  pointer-events: none;
+}

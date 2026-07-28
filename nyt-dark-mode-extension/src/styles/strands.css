@@ -1,0 +1,58 @@
+/* NYT Games Plus — Strands dark theme.
+ * Board anchor: data-testid="strands-board" + "styles-module_board__".
+ * Strands draws found-word and spangram highlights as colored overlays
+ * driven by CSS custom properties; we keep those accent colors (blue =
+ * theme words, gold = spangram) and just darken the canvas + lighten
+ * the letters.
+ */
+html[data-nytx-game="strands"][data-nytx-dark="on"] {
+  --nytx-strands-theme: #2f93e0; /* found theme word */
+  --nytx-strands-spangram: #f4c945; /* spangram */
+}
+
+/* Strands' own containers are made TRANSPARENT (not opaque dark): the dark
+ * pz-shell (body / #pz-game-root) already sits behind them. Painting them
+ * opaque made an overlapping full-width wrapper cover the "today's theme"
+ * section. Transparent keeps the board dark AND lets the theme show through.
+ * The mint "Play" welcome splash has an inline background, so it needs an
+ * !important transparent to drop back to the dark shell. */
+html[data-nytx-game="strands"][data-nytx-dark="on"] [data-testid="strands-board"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="styles-module_board"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="module_gameContainer"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="module_content"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="module_wrapper"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="_container_"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="_moment"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="_welcome"] {
+  background-color: transparent !important;
+  color: var(--nytx-text) !important;
+}
+
+/* Letter buttons — ONLY lighten the glyph. Do not set any background or
+ * hover color: Strands paints the drag-select highlight directly on the
+ * letters (and draws connector lines/circles), so forcing a background here
+ * hides the selection feedback entirely. */
+html[data-nytx-game="strands"][data-nytx-dark="on"] [data-testid="strands-board"] button {
+  color: var(--nytx-text) !important;
+}
+
+/* Theme clue + counter */
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="module_clue"] {
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="module_clue"] b,
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="module_clue"] strong {
+  color: var(--nytx-strands-spangram) !important;
+}
+
+/* Toolbar / hint bar */
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="toolbarWrapper"],
+html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="module_wrapper"] {
+  background-color: transparent !important;
+  color: var(--nytx-text) !important;
+}
+
+/* NOTE: we deliberately do NOT restyle the board's <line>/<circle>/<path>
+ * elements. Those are Strands' selection connectors and found-word paths
+ * (blue = theme word, gold = spangram); recoloring them grayed out the drag
+ * highlight and the solved-word colors. They read fine on a dark board. */

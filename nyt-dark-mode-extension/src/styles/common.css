@@ -1,0 +1,198 @@
+/* NYT Games Plus — shared dark-mode tokens + base paint.
+ * Everything is gated on html[data-nytx-dark="on"] so the stylesheet is
+ * inert until the extension turns a game's dark mode on.
+ */
+
+/* ---- Darkness levels ---- */
+html[data-nytx-dark="on"][data-nytx-level="dim"] {
+  --nytx-bg: #202124;
+  --nytx-surface: #2a2c30;
+  --nytx-surface-2: #34363b;
+  --nytx-text: #e8eaed;
+  --nytx-text-dim: #9aa0a6;
+  --nytx-border: #3c4043;
+}
+html[data-nytx-dark="on"][data-nytx-level="dark"] {
+  --nytx-bg: #121212;
+  --nytx-surface: #1c1c1e;
+  --nytx-surface-2: #262629;
+  --nytx-text: #e9e9e9;
+  --nytx-text-dim: #9a9a9a;
+  --nytx-border: #2e2e31;
+}
+html[data-nytx-dark="on"][data-nytx-level="oled"] {
+  --nytx-bg: #000000;
+  --nytx-surface: #0d0d0d;
+  --nytx-surface-2: #171717;
+  --nytx-text: #ededed;
+  --nytx-text-dim: #8a8a8a;
+  --nytx-border: #222222;
+}
+
+/* ---- Accent intensity (saturation of game highlight colors) ---- */
+html[data-nytx-dark="on"][data-nytx-accent="low"] {
+  --nytx-accent-alpha: 0.55;
+}
+html[data-nytx-dark="on"][data-nytx-accent="medium"] {
+  --nytx-accent-alpha: 0.82;
+}
+html[data-nytx-dark="on"][data-nytx-accent="high"] {
+  --nytx-accent-alpha: 1;
+}
+
+/* ---- Base page paint (applies to every game) ---- */
+html[data-nytx-dark="on"],
+html[data-nytx-dark="on"] body {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+}
+
+html[data-nytx-dark="on"] {
+  color-scheme: dark;
+}
+html[data-nytx-dark="on"] ::selection {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ---- Full-bleed shell coverage ----
+ * Every NYT game lives inside a shared "pz-" shell. Painting only the board
+ * leaves white gutters on the sides and a white strip below (footer, ads,
+ * editorial). Black out the whole shell so the dark mode is edge-to-edge.
+ */
+html[data-nytx-dark="on"] body,
+html[data-nytx-dark="on"] main,
+html[data-nytx-dark="on"] .pz-content,
+html[data-nytx-dark="on"] .pz-section,
+html[data-nytx-dark="on"] .pz-row,
+html[data-nytx-dark="on"] .pz-module,
+html[data-nytx-dark="on"] .pz-game-wrapper,
+html[data-nytx-dark="on"] .pz-game-screen,
+html[data-nytx-dark="on"] .pz-game-field,
+html[data-nytx-dark="on"] #pz-game-root,
+html[data-nytx-dark="on"] [class*="pz-game"],
+html[data-nytx-dark="on"] [class*="pz-toolbar"],
+html[data-nytx-dark="on"] #portal-game-header,
+html[data-nytx-dark="on"] #portal-game-toolbar,
+html[data-nytx-dark="on"] #portal-editorial-content,
+html[data-nytx-dark="on"] [class*="pz-ad"],
+html[data-nytx-dark="on"] [id^="ad-"],
+html[data-nytx-dark="on"] .pz-footer,
+html[data-nytx-dark="on"] .pz-footer__wrapper,
+html[data-nytx-dark="on"] .pz-footer__section {
+  background-color: var(--nytx-bg) !important;
+}
+
+/* Masthead + nav chrome (the white "Games" bar and the global nav) */
+html[data-nytx-dark="on"] .pz-header,
+html[data-nytx-dark="on"] [class*="pz-header"],
+html[data-nytx-dark="on"] .pz-nav,
+html[data-nytx-dark="on"] [class*="pz-nav"],
+html[data-nytx-dark="on"] #js-global-nav,
+html[data-nytx-dark="on"] #js-mobile-toolbar {
+  background-color: var(--nytx-bg) !important;
+  border-color: var(--nytx-border) !important;
+}
+html[data-nytx-dark="on"] .pz-header a,
+html[data-nytx-dark="on"] .pz-header button,
+html[data-nytx-dark="on"] .pz-nav a,
+html[data-nytx-dark="on"] .pz-nav button,
+html[data-nytx-dark="on"] [class*="pz-nav"] a,
+html[data-nytx-dark="on"] [class*="pz-nav"] span {
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-dark="on"] .pz-header svg,
+html[data-nytx-dark="on"] .pz-nav svg,
+html[data-nytx-dark="on"] [class*="pz-nav"] svg {
+  fill: var(--nytx-text) !important;
+  color: var(--nytx-text) !important;
+}
+
+/* Title bar, byline and footer text need to flip to light on the dark shell */
+html[data-nytx-dark="on"] .pz-game-title-bar,
+html[data-nytx-dark="on"] .pz-game-title-bar *,
+html[data-nytx-dark="on"] .pz-byline,
+html[data-nytx-dark="on"] .pz-byline * {
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-dark="on"] .pz-footer,
+html[data-nytx-dark="on"] .pz-footer a,
+html[data-nytx-dark="on"] .pz-footer * {
+  color: var(--nytx-text-dim) !important;
+  border-color: var(--nytx-border) !important;
+}
+
+/* Overlay portals (toasts, tooltips, modals, moments) must stay transparent —
+ * painting them opaque hides floating messages like Connections' "One away…". */
+html[data-nytx-dark="on"] #portal-toast-system,
+html[data-nytx-dark="on"] #portal-toolbar-tooltip,
+html[data-nytx-dark="on"] #portal-sb-tooltip,
+html[data-nytx-dark="on"] #portal-game-moments {
+  background-color: transparent !important;
+}
+
+/* Toast / floating message pills — force a legible dark pill with light text
+ * on every game so results ("One away…", "Not in word list", etc.) show up. */
+html[data-nytx-dark="on"] [class*="Toast-module_toast"],
+html[data-nytx-dark="on"] [class*="oast-module_toast"] {
+  background-color: #2b2b30 !important;
+  color: #ffffff !important;
+  border: 1px solid var(--nytx-border) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+html[data-nytx-dark="on"] [class*="Toast-module_toast"] * {
+  color: #ffffff !important;
+}
+
+/* Generic chrome shared by the games (headers, modals, menus) */
+html[data-nytx-dark="on"] header,
+html[data-nytx-dark="on"] [class*="pz-game-header"],
+html[data-nytx-dark="on"] [class*="-header"],
+html[data-nytx-dark="on"] [class*="Header"] {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+  border-color: var(--nytx-border) !important;
+}
+
+html[data-nytx-dark="on"] [class*="Modal"],
+html[data-nytx-dark="on"] [class*="modal"],
+html[data-nytx-dark="on"] [role="dialog"],
+html[data-nytx-dark="on"] [class*="Menu-module"],
+html[data-nytx-dark="on"] [class*="popup"] {
+  background-color: var(--nytx-surface) !important;
+  color: var(--nytx-text) !important;
+  border-color: var(--nytx-border) !important;
+}
+
+html[data-nytx-dark="on"] svg[class*="icon"] path,
+html[data-nytx-dark="on"] button[class*="icon"] svg {
+  fill: currentColor;
+}
+
+/* ---- Floating quick-toggle ---- */
+#nytx-toggle {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2147483646;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  background: rgba(30, 30, 33, 0.85);
+  color: #fff;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+#nytx-toggle:hover {
+  transform: scale(1.08);
+}
+#nytx-toggle.nytx-on {
+  background: rgba(247, 218, 33, 0.92);
+  color: #1a1a00;
+}

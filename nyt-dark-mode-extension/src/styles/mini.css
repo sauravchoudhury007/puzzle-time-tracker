@@ -1,0 +1,78 @@
+/* NYT Games Plus — Mini crossword dark theme.
+ * The Mini uses clean BEM classes (.xwd__*). The board is SVG; setting
+ * the CSS `fill` property (with !important) overrides the presentation
+ * attribute NYT puts on each <rect>.
+ * Accent: amber selected cell, deep-blue highlighted answer.
+ */
+html[data-nytx-game="mini"][data-nytx-dark="on"] {
+  --mini-selected: #f7da21;
+  --mini-highlight: #2b5278;
+}
+
+/* Page / layout chrome */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .pz-game-field,
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__layout,
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__board--"] {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+}
+
+/* Empty (white) cells */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__cell--cell {
+  fill: var(--nytx-surface-2) !important;
+}
+/* Block (black) cells */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__cell--block {
+  fill: #000 !important;
+}
+/* Highlighted answer (the across/down word in focus) */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__cell--highlighted {
+  fill: var(--mini-highlight) !important;
+}
+/* Currently selected cell */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__cell--selected {
+  fill: var(--mini-selected) !important;
+}
+/* Grid lines */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__board rect[stroke],
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__board line {
+  stroke: var(--nytx-border) !important;
+}
+/* Letters + cell numbers */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__cell text {
+  fill: var(--nytx-text) !important;
+}
+/* Keep the letter inside the selected (amber) cell dark for contrast */
+html[data-nytx-game="mini"][data-nytx-dark="on"] .xwd__cell--selected ~ text,
+html[data-nytx-game="mini"][data-nytx-dark="on"] g.xwd__cell:has(.xwd__cell--selected) text {
+  fill: #1a1a00 !important;
+}
+
+/* Clue bar (mobile) + clue lists (desktop) */
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue-bar"],
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue-list--wrapper"],
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue-list--list"] {
+  background-color: var(--nytx-surface) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue-list--title"] {
+  color: var(--nytx-text-dim) !important;
+  border-color: var(--nytx-border) !important;
+}
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue--li"] {
+  color: var(--nytx-text) !important;
+  border-color: var(--nytx-border) !important;
+}
+/* Selected / highlighted clue */
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue--selected"] {
+  background-color: var(--mini-selected) !important;
+  color: #1a1a00 !important;
+}
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue--highlighted"] {
+  background-color: var(--mini-highlight) !important;
+  color: #fff !important;
+}
+/* Clue number label within a clue row */
+html[data-nytx-game="mini"][data-nytx-dark="on"] [class*="xwd__clue--label"] {
+  color: inherit !important;
+}

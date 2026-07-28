@@ -1,0 +1,49 @@
+/* NYT Games Plus — Wordle dark theme (optional, OFF by default).
+ * Wordle already ships a native dark mode, so this is only applied if
+ * the user explicitly enables Wordle in the popup. Tile states are keyed
+ * off Wordle's data-state attribute, which is stable.
+ */
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Board-module"],
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Game-module"],
+html[data-nytx-game="wordle"][data-nytx-dark="on"] #wordle-app-game {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+}
+
+/* Tiles */
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Tile-module"][data-state="empty"],
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Tile-module"][data-state="tbd"] {
+  background-color: var(--nytx-bg) !important;
+  border-color: var(--nytx-border) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Tile-module"][data-state="correct"] {
+  background-color: #538d4e !important;
+  border-color: #538d4e !important;
+  color: #fff !important;
+}
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Tile-module"][data-state="present"] {
+  background-color: #b59f3b !important;
+  border-color: #b59f3b !important;
+  color: #fff !important;
+}
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Tile-module"][data-state="absent"] {
+  background-color: #3a3a3c !important;
+  border-color: #3a3a3c !important;
+  color: #fff !important;
+}
+
+/* Keyboard */
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Key-module"] {
+  background-color: #818384 !important;
+  color: #fff !important;
+}
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Key-module"][data-state="correct"] {
+  background-color: #538d4e !important;
+}
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Key-module"][data-state="present"] {
+  background-color: #b59f3b !important;
+}
+html[data-nytx-game="wordle"][data-nytx-dark="on"] [class*="Key-module"][data-state="absent"] {
+  background-color: #3a3a3c !important;
+}

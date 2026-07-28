@@ -1,0 +1,60 @@
+/* NYT Games Plus — Connections dark theme.
+ * Connections uses hashed CSS-module class names (e.g.
+ * "Card-module_label__U_Q2H"). We anchor on the stable data-testid
+ * hooks and on the localname substrings ("_board__", "cardsContainer",
+ * "_label__") so the rules survive NYT's periodic hash rebuilds.
+ * The four category colors are left untouched — they're pastel with
+ * dark text, so they read fine on a dark page and keep the game's
+ * identity.
+ */
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="Game-module_board"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="connections-board"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="cardsContainer"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="boardContainer"] {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+}
+
+/* Unsolved tiles */
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="card-label"] {
+  background-color: var(--nytx-surface-2) !important;
+  color: var(--nytx-text) !important;
+  border-radius: 6px;
+}
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="card-label"] * {
+  color: var(--nytx-text) !important;
+}
+
+/* Selected tile (NYT toggles a hashed "...selected..." class / dark fill) */
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="card-label"][class*="elected"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="card-label"][aria-pressed="true"] {
+  background-color: #5a78c2 !important;
+  color: #fff !important;
+}
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="card-label"][class*="elected"] * {
+  color: #fff !important;
+}
+
+/* Toolbar / mistakes / labels */
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="toolbarWrapper"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="boardActionGroup"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="mistakes"] {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="mistake-bubble"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="dot"] {
+  background-color: var(--nytx-text-dim) !important;
+}
+
+/* Action buttons (Shuffle / Deselect / Submit) */
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="ActionButton-module_button"] {
+  background-color: transparent !important;
+  color: var(--nytx-text) !important;
+  border-color: var(--nytx-text) !important;
+}
+html[data-nytx-game="connections"][data-nytx-dark="on"] [class*="ActionButton-module_button"][class*="submit"],
+html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="submit-btn"]:not([disabled]) {
+  background-color: var(--nytx-text) !important;
+  color: var(--nytx-bg) !important;
+}

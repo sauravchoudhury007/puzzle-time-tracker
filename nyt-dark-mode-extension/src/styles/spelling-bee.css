@@ -1,0 +1,320 @@
+/* NYT Games Plus — Spelling Bee dark theme + helper UI.
+ * Accent = the iconic Bee yellow (#f7da21), kept bright on dark.
+ */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] {
+  --sb-yellow: #f7da21;
+}
+
+/* Layout surfaces */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .pz-game-field,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-content-box,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-controls-box,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-status-box {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+}
+
+/* Word list */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-wordlist-box,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-wordlist-window,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-wordlist-drawer {
+  background-color: var(--nytx-surface) !important;
+  border-color: var(--nytx-border) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-wordlist-items-pag li,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-wordlist-drawer li {
+  border-color: var(--nytx-border) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-wordlist-pangram {
+  border-bottom-color: var(--sb-yellow) !important;
+  color: var(--sb-yellow) !important;
+}
+
+/* Progress / rank bar */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-progress-value,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-progress-rank {
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-progress-line {
+  background-color: var(--nytx-border) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-progress-dot {
+  background-color: var(--nytx-text-dim) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-progress-marker .sb-progress-value {
+  background-color: var(--sb-yellow) !important;
+  color: #1a1a00 !important;
+}
+
+/* The input line above the hive */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-hive-input-content,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-input-bright {
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-input-invalid {
+  color: var(--nytx-text-dim) !important;
+}
+
+/* Hive */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .hive-cell .cell-fill {
+  fill: var(--nytx-surface-2) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .hive-cell.center .cell-fill {
+  fill: var(--sb-yellow) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .hive-cell .cell-letter {
+  fill: var(--nytx-text) !important;
+  font-weight: 700;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .hive-cell.center .cell-letter {
+  fill: #1a1a00 !important;
+}
+
+/* Action buttons (Delete / Shuffle / Enter) */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .hive-action {
+  background-color: var(--nytx-surface) !important;
+  border-color: var(--nytx-border) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .hive-action__shuffle {
+  background-color: var(--nytx-surface) !important;
+}
+
+/* Toast / message bubble */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .sb-message {
+  background-color: var(--nytx-surface-2) !important;
+  color: var(--nytx-text) !important;
+}
+
+/* ======================================================================
+ *  Feature UI — works in both light and dark mode
+ * ==================================================================== */
+
+/* (2) Points to next rank, under the ranking bar */
+.nytx-next-rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 14px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font: 600 13px/1.2 "nyt-franklin", Arial, sans-serif;
+  background: #f3f0e4;
+  color: #3a3a32;
+  border: 1px solid #e1dcc8;
+  width: fit-content;
+}
+.nytx-next-rank .nytx-nr-rank {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6a6a5a;
+}
+.nytx-next-rank .nytx-nr-score {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f7da21;
+  color: #2a2400;
+}
+.nytx-next-rank .nytx-nr-to b {
+  font-size: 15px;
+}
+.nytx-next-rank.nytx-nr-max {
+  background: #f7da21;
+  border-color: #e3c400;
+  color: #2a2400;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-next-rank {
+  background: var(--nytx-surface-2);
+  border-color: var(--nytx-border);
+  color: var(--nytx-text);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-next-rank .nytx-nr-rank {
+  color: var(--nytx-text-dim);
+}
+
+/* (3) Hints panel */
+.nytx-hints {
+  margin: 10px 0 16px;
+  border: 1px solid #e1dcc8;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fbf9f2;
+  font-family: "nyt-franklin", Arial, sans-serif;
+}
+.nytx-hints-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f3f0e4;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.nytx-hints-head .nytx-h-title {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.nytx-hints-head .nytx-h-sum {
+  font-size: 12.5px;
+  color: #6a6a5a;
+  margin-left: auto;
+}
+.nytx-hints-head .nytx-h-chev {
+  transition: transform 0.15s ease;
+  color: #6a6a5a;
+}
+.nytx-hints.nytx-open .nytx-hints-head .nytx-h-chev {
+  transform: rotate(180deg);
+}
+.nytx-hints-body {
+  display: none;
+  padding: 6px 14px 14px;
+}
+.nytx-hints.nytx-open .nytx-hints-body {
+  display: block;
+}
+.nytx-h-sub {
+  margin: 12px 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a8576;
+}
+.nytx-grid-wrap {
+  overflow-x: auto;
+}
+.nytx-grid {
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.nytx-grid th,
+.nytx-grid td {
+  border: 1px solid #e1dcc8;
+  padding: 3px 7px;
+  text-align: center;
+  min-width: 22px;
+}
+.nytx-grid thead th,
+.nytx-grid tbody th {
+  background: #f3f0e4;
+  font-weight: 700;
+}
+.nytx-grid .nytx-zero {
+  color: #c9c4b2;
+}
+.nytx-grid .nytx-rt,
+.nytx-grid .nytx-colt th {
+  background: #efeada;
+}
+.nytx-two-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.nytx-two-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.nytx-two {
+  font-size: 12.5px;
+  color: #4a4a40;
+}
+.nytx-two b {
+  color: #1a1a14;
+}
+
+/* Hints panel — dark */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-hints {
+  background: var(--nytx-surface);
+  border-color: var(--nytx-border);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-hints-head {
+  background: var(--nytx-surface-2);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-hints-head .nytx-h-sum,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-hints-head .nytx-h-chev,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-h-sub {
+  color: var(--nytx-text-dim);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid th,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid td {
+  border-color: var(--nytx-border);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid thead th,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid tbody th {
+  background: var(--nytx-surface-2);
+  color: var(--nytx-text);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid td {
+  color: var(--nytx-text);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid .nytx-zero {
+  color: #55554c;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid .nytx-rt,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid .nytx-colt th {
+  background: #33332b;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-two {
+  color: var(--nytx-text-dim);
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-two b {
+  color: var(--nytx-text);
+}
+
+/* ---- Live progress states (found/total) ---- */
+/* Grid cells & totals: complete = green, in-progress = amber */
+.nytx-grid td.nytx-done,
+.nytx-grid th.nytx-done {
+  background: #cdeac3 !important;
+  color: #166b2c !important;
+  font-weight: 700;
+}
+.nytx-grid td.nytx-partial,
+.nytx-grid th.nytx-partial {
+  color: #9a6b00 !important;
+  font-weight: 600;
+}
+/* Two-letter entries */
+.nytx-two.nytx-done,
+.nytx-two.nytx-done b {
+  color: #1c8a3a;
+  font-weight: 700;
+}
+.nytx-two.nytx-partial {
+  color: #9a6b00;
+}
+/* Summary line */
+.nytx-h-sum.nytx-done {
+  color: #1c8a3a !important;
+  font-weight: 700;
+}
+
+/* Dark variants */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid td.nytx-done,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid th.nytx-done {
+  background: #1f5130 !important;
+  color: #b7f0c2 !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid td.nytx-partial,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-grid th.nytx-partial {
+  color: #e8c34a !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-two.nytx-done,
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-two.nytx-done b {
+  color: #7ee08f;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-two.nytx-partial {
+  color: #e8c34a;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-h-sum.nytx-done {
+  color: #7ee08f !important;
+}

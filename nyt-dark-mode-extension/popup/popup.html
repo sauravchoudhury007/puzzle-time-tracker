@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>NYT Games Plus</title>
+  </head>
+  <body>
+    <header class="pp-head">
+      <span class="pp-logo">🐝</span>
+      <div>
+        <h1>NYT Games Plus</h1>
+        <p>Dark mode &amp; Spelling Bee helper</p>
+      </div>
+    </header>
+
+    <section class="pp-section">
+      <label class="pp-row pp-master">
+        <span>Dark mode</span>
+        <input type="checkbox" id="enabled" class="pp-switch" />
+      </label>
+    </section>
+
+    <section class="pp-section" id="games-section">
+      <h2>Games</h2>
+      <label class="pp-row"><span>Spelling Bee</span><input type="checkbox" data-game="spelling-bee" class="pp-switch" /></label>
+      <label class="pp-row"><span>Connections</span><input type="checkbox" data-game="connections" class="pp-switch" /></label>
+      <label class="pp-row"><span>Strands</span><input type="checkbox" data-game="strands" class="pp-switch" /></label>
+      <label class="pp-row"><span>The Mini</span><input type="checkbox" data-game="mini" class="pp-switch" /></label>
+      <label class="pp-row"><span>Wordle <em>(has native dark)</em></span><input type="checkbox" data-game="wordle" class="pp-switch" /></label>
+    </section>
+
+    <section class="pp-section">
+      <h2>Appearance</h2>
+      <div class="pp-row">
+        <span>Darkness</span>
+        <div class="pp-seg" id="level">
+          <button data-level="dim">Dim</button>
+          <button data-level="dark">Dark</button>
+          <button data-level="oled">OLED</button>
+        </div>
+      </div>
+      <div class="pp-row">
+        <span>Accent</span>
+        <div class="pp-seg" id="accent">
+          <button data-accent="low">Low</button>
+          <button data-accent="medium">Med</button>
+          <button data-accent="high">High</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-section">
+      <h2>Spelling Bee extras</h2>
+      <label class="pp-row"><span>Points to next rank</span><input type="checkbox" id="sbNextRank" class="pp-switch" /></label>
+      <label class="pp-row"><span>Hints panel</span><input type="checkbox" id="sbHints" class="pp-switch" /></label>
+    </section>
+
+    <section class="pp-section">
+      <label class="pp-row"><span>Floating toggle button</span><input type="checkbox" id="toggleButton" class="pp-switch" /></label>
+    </section>
+
+    <footer class="pp-foot">Changes apply instantly — reload a game tab if it was already open.</footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
