@@ -5,9 +5,21 @@
   "description": "Per-game dark modes for NYT Wordle, Connections, Strands, Mini & Spelling Bee, plus live rank progress and hints for Spelling Bee.",
   "permissions": ["storage"],
   "host_permissions": ["https://www.nytimes.com/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_title": "NYT Games Plus",
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "content_scripts": [
     {

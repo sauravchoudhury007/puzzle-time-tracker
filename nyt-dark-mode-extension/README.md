@@ -69,3 +69,15 @@ python3 -m http.server 8765
 
 The extension was verified this way against the real DOM for Spelling Bee,
 Connections, Strands, and the Mini.
+
+## Icons
+
+`icons/icon.svg` is the source — a Spelling Bee hexagon in the popup's accent
+yellow (`#f7da21`) on a dark tile. Edit the SVG, then re-export:
+
+```sh
+for s in 16 32 48 128; do
+  inkscape --export-type=png --export-width=$s --export-height=$s \
+    --export-filename="icons/icon$s.png" icons/icon.svg
+done
+```

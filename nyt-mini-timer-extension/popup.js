@@ -11,10 +11,32 @@ const manualDateInput = document.getElementById('manual-date')
 const manualTimeInput = document.getElementById('manual-time')
 const historyList = document.getElementById('history-list')
 
-const DEFAULT_API_URL = 'https://*.mr007.ca/api/auto-log'
+// Bootstrap value only. Set your real endpoint once in the popup's API URL
+// field — it persists in chrome.storage.local and never lands in the repo.
+// Keep in sync with background.js.
+const DEFAULT_API_URL = 'http://localhost:3000/api/auto-log'
+
+const normalizeApiUrl = url => {
+  const trimmed = (url || '').trim()
+  // Earlier builds stored the host match pattern here; fetch can't use that.
+  if (!trimmed || trimmed.includes('*')) return DEFAULT_API_URL
+  return trimmed
+}
+
 let lastTimer = null
 let lastDate = null
 let history = []
+
+const sendToBackground = message =>
+  new Promise(resolve => {
+    chrome.runtime.sendMessage(message, response => {
+      if (chrome.runtime.lastError) {
+        resolve({ error: chrome.runtime.lastError.message })
+        return
+      }
+      resolve(response || {})
+    })
+  })
 
 const syncManualFields = () => {
   if (manualDateInput) manualDateInput.value = lastDate || ''
@@ -22,9 +44,9 @@ const syncManualFields = () => {
 }
 
 const render = ({ date, timer, status }) => {
-  puzzleDateEl.textContent = date ?? '—'
-  timerEl.textContent = timer ?? '—'
-  statusEl.textContent = status ?? ''
+  if (date !== undefined) puzzleDateEl.textContent = date ?? '—'
+  if (timer !== undefined) timerEl.textContent = timer ?? '—'
+  if (status !== undefined) statusEl.textContent = status ?? ''
 }
 
 const parseTimerToSeconds = timerText => {
@@ -106,15 +128,16 @@ const setSettings = async ({ apiUrl, apiToken }) => {
 const loadSettings = async () => {
   try {
     const { apiUrl, apiToken } = await getSettings()
-    apiUrlInput.value = apiUrl || DEFAULT_API_URL
+    const normalized = normalizeApiUrl(apiUrl)
+    apiUrlInput.value = normalized
     apiTokenInput.value = apiToken || ''
     updateTokenExpiry()
+    if (normalized !== apiUrl) await setSettings({ apiUrl: normalized, apiToken: apiToken || '' })
 
-    // Attempt to grab a fresh token immediately unconditionally
-    const freshToken = await fetchTokenFromTrackerTab()
-    if (freshToken) {
-      apiTokenInput.value = freshToken
-      await setSettings({ apiUrl: apiUrlInput.value, apiToken: freshToken })
+    // Ask the worker for a fresh token — it also caches it for auto-logging.
+    const { token } = await sendToBackground({ type: 'REFRESH_TOKEN' })
+    if (token) {
+      apiTokenInput.value = token
       updateTokenExpiry()
     }
   } catch (err) {
@@ -124,8 +147,9 @@ const loadSettings = async () => {
 }
 
 const saveSettings = async () => {
-  const apiUrl = (apiUrlInput.value || '').trim() || DEFAULT_API_URL
+  const apiUrl = normalizeApiUrl(apiUrlInput.value)
   const apiToken = (apiTokenInput.value || '').trim()
+  apiUrlInput.value = apiUrl
   try {
     await setSettings({ apiUrl, apiToken })
     statusEl.textContent = 'Settings saved.'
@@ -149,19 +173,6 @@ const getHistory = async () => {
   }
 }
 
-const setHistory = async next => {
-  history = next
-  renderHistory()
-  if (chrome?.storage?.local) {
-    return chrome.storage.local.set({ history: next })
-  }
-  try {
-    localStorage.setItem('nytMiniHistory', JSON.stringify(next))
-  } catch {
-    // ignore
-  }
-}
-
 const renderHistory = () => {
   if (!historyList) return
   if (!history || history.length === 0) {
@@ -176,6 +187,19 @@ const renderHistory = () => {
     )
     .join('')
 }
+
+const MINI_URL = /^https:\/\/www\.nytimes\.com\/crosswords\/game\/mini/
+
+const requestTimer = tabId =>
+  new Promise(resolve => {
+    chrome.tabs.sendMessage(tabId, { type: 'GET_NYT_MINI_TIME' }, response => {
+      if (chrome.runtime.lastError) {
+        resolve({ error: chrome.runtime.lastError.message || 'Unknown error' })
+        return
+      }
+      resolve(response || {})
+    })
+  })
 
 const fetchTimer = async () => {
   render({ status: 'Looking for the Mini tab…' })
@@ -194,93 +218,40 @@ const fetchTimer = async () => {
     return
   }
 
-  chrome.tabs.sendMessage(
-    tab.id,
-    { type: 'GET_NYT_MINI_TIME' },
-    response => {
-      if (chrome.runtime.lastError) {
-        const msg = chrome.runtime.lastError.message || 'Unknown error'
-        console.warn('NYT Mini Timer: sendMessage error', msg)
-        render({
-          status: `Not on a NYT Mini page (or script not injected). ${msg}`,
-        })
-        return
-      }
+  if (!MINI_URL.test(tab.url || '')) {
+    render({ date: null, timer: null, status: 'Open the NYT Mini in this tab, then hit Refresh.' })
+    return
+  }
 
-      const timer = response?.timer ?? null
-      const date = response?.date ?? null
-      const url = response?.url ?? tab.url
-
-      lastTimer = timer
-      lastDate = date
-      syncManualFields()
-      render({
-        date: date || 'Unknown date',
-        timer: timer || 'Timer not found',
-        status: url ? new URL(url).pathname : '',
-      })
+  let response = await requestTimer(tab.id)
+  if (response.error) {
+    // Tab was open before this build of the extension loaded — inject and retry.
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] })
+      response = await requestTimer(tab.id)
+    } catch (err) {
+      response = { error: `${response.error} (injection failed: ${err?.message || err})` }
     }
-  )
-}
-
-const fetchTokenFromTrackerTab = async () => {
-  const candidateUrls = [
-    'http://localhost:3000/*',
-    'https://*.mr007.ca/*',
-  ]
-  const tabs = await chrome.tabs.query({ url: candidateUrls })
-  const targetTab = tabs[0]
-  if (!targetTab) {
-    console.warn('NYT Mini Timer: no tracker tab open for token fetch')
-    return null
   }
 
-  // Try content-script message first (preferred)
-  const tryMessage = () =>
-    new Promise(resolve => {
-      chrome.tabs.sendMessage(
-        targetTab.id,
-        { type: 'GET_SUPABASE_TOKEN' },
-        response => {
-          if (chrome.runtime.lastError) {
-            console.warn('NYT Mini Timer: token fetch via message failed', chrome.runtime.lastError.message)
-            resolve(null)
-            return
-          }
-          resolve(response?.token || null)
-        }
-      )
-    })
-
-  const tokenFromMessage = await tryMessage()
-  if (tokenFromMessage) return tokenFromMessage
-
-  if (!chrome.scripting?.executeScript) {
-    console.warn('NYT Mini Timer: scripting API unavailable; cannot inject token snippet')
-    return null
+  if (response.error) {
+    console.warn('NYT Mini Timer: sendMessage error', response.error)
+    render({ status: `Could not reach the Mini page — try reloading it. ${response.error}` })
+    return
   }
 
-  try {
-    const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId: targetTab.id },
-      func: () => {
-        const key = Object.keys(localStorage).find(k => /^sb-.*-auth-token$/.test(k))
-        if (!key) return null
-        const raw = localStorage.getItem(key) || ''
-        try {
-          const parsed = JSON.parse(raw)
-          return parsed.access_token || parsed?.currentSession?.access_token || null
-        } catch {
-          if (typeof raw === 'string' && raw.startsWith('eyJ')) return raw
-          return null
-        }
-      },
-    })
-    return result || null
-  } catch (err) {
-    console.warn('NYT Mini Timer: token fetch via injection failed', err)
-    return null
-  }
+  lastTimer = response.timer ?? null
+  lastDate = response.date ?? null
+  syncManualFields()
+  render({
+    date: lastDate || 'Unknown date',
+    timer: lastTimer || 'Timer not found',
+    status: response.solved
+      ? 'Puzzle solved — showing final time.'
+      : tab.url
+        ? new URL(tab.url).pathname
+        : '',
+  })
 }
 
 const maybeSendToApi = async () => {
@@ -293,57 +264,33 @@ const maybeSendToApi = async () => {
     statusEl.textContent = 'No timer yet. Hit Refresh or enter one manually.'
     return
   }
-  statusEl.textContent = 'Looking for Supabase token…'
-  const grabbedToken = await fetchTokenFromTrackerTab()
-  let token = grabbedToken || (apiTokenInput.value || '').trim()
 
-  if (grabbedToken) {
-    apiTokenInput.value = grabbedToken
-    await setSettings({ apiUrl: apiUrlInput.value || DEFAULT_API_URL, apiToken: grabbedToken })
-    updateTokenExpiry()
-  }
-
-  if (!token) {
-    statusEl.textContent = 'No token found. Open the tracker site in a tab to auto-grab it.'
-    return
-  }
-
-  const apiUrl = (apiUrlInput.value || '').trim() || DEFAULT_API_URL
   const seconds = parseTimerToSeconds(effectiveTimer)
   if (seconds === null) {
     statusEl.textContent = `Cannot parse timer "${effectiveTimer}" (expected mm:ss).`
     return
   }
-  const payloadDate = effectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(effectiveDate) ? effectiveDate : undefined
 
+  // The worker reads settings from storage, so honour a URL or token that was
+  // typed here but not saved yet.
+  await setSettings({
+    apiUrl: normalizeApiUrl(apiUrlInput.value),
+    apiToken: (apiTokenInput.value || '').trim(),
+  })
+
+  // The worker owns the token lookup and the POST, so a manual submit and an
+  // automatic one behave identically.
   statusEl.textContent = 'Sending to API…'
-  try {
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        seconds,
-        date: payloadDate,
-      }),
-    })
-    const body = await res.json().catch(() => null)
-    const statusMsg = res.ok ? `API ok: ${body?.status || 'success'}` : `API ${res.status}: ${body?.error || 'failed'}`
-    if (res.ok) {
-      statusEl.textContent = statusMsg
-    } else {
-      statusEl.textContent = statusMsg
-    }
-    const nextHistory = [
-      { date: payloadDate || effectiveDate || '—', time: effectiveTimer || '—', status: statusMsg },
-      ...history,
-    ].slice(0, 10)
-    await setHistory(nextHistory)
-  } catch (err) {
-    statusEl.textContent = `API error: ${err?.message || err}`
+  const result = await sendToBackground({ type: 'SUBMIT_TIME', seconds, date: effectiveDate })
+  statusEl.textContent = result.status || result.error || 'No response from the background worker.'
+
+  const { apiToken } = await getSettings()
+  if (apiToken) {
+    apiTokenInput.value = apiToken
+    updateTokenExpiry()
   }
+  history = await getHistory()
+  renderHistory()
 }
 
 refreshBtn.addEventListener('click', fetchTimer)
@@ -352,7 +299,16 @@ saveBtn.addEventListener('click', saveSettings)
 apiTokenInput.addEventListener('input', updateTokenExpiry)
 document.addEventListener('DOMContentLoaded', fetchTimer)
 document.addEventListener('DOMContentLoaded', async () => {
+  chrome.action.setBadgeText({ text: '' })
   await loadSettings()
   history = await getHistory()
   renderHistory()
+  // Opening the popup is a good moment to retry any solve that couldn't be
+  // sent at the time (usually because no signed-in tracker tab was open).
+  const { pending } = await sendToBackground({ type: 'FLUSH_PENDING' })
+  if (pending) {
+    statusEl.textContent = `${pending} solve(s) still waiting — sign in to the tracker.`
+    history = await getHistory()
+    renderHistory()
+  }
 })

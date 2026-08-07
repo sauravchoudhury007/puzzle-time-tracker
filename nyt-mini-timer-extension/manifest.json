@@ -1,11 +1,26 @@
 {
   "manifest_version": 3,
   "name": "NYT Mini Timer Peek",
-  "description": "Shows the current NYT Mini timer and puzzle date from the active tab.",
-  "version": "0.1.0",
+  "description": "Shows the current NYT Mini timer and puzzle date from the active tab, and logs your time automatically when you solve.",
+  "version": "0.2.0",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "NYT Mini Timer"
+    "default_title": "NYT Mini Timer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "permissions": [
     "tabs",
@@ -14,14 +29,14 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://www.nytimes.com/crosswords/game/mini/*",
+    "https://www.nytimes.com/crosswords/game/mini*",
     "http://localhost:3000/*",
     "https://*.mr007.ca/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://www.nytimes.com/crosswords/game/mini/*"
+        "https://www.nytimes.com/crosswords/game/mini*"
       ],
       "js": [
         "content.js"
