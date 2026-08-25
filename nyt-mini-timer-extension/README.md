@@ -13,6 +13,13 @@ time to the tracker automatically when you finish the puzzle.
 After reloading the extension, reload any NYT Mini tab that was already open —
 otherwise the content script isn't running in it yet.
 
+Content scripts and the background service worker update independently, so it's
+possible to end up running a new `content.js` against an old worker. If the two
+disagree the toast is suppressed and the reason is logged to the page console
+rather than showing something misleading. Check the version on
+`chrome://extensions` against `manifest.json` to confirm a reload actually took;
+if it's stale, toggle the extension off and on.
+
 ## How to use
 
 1) First run only: open the popup and set **API URL** to your deployed
@@ -26,21 +33,37 @@ otherwise the content script isn't running in it yet.
    from it; those tokens expire after about an hour, so a signed-in tab is what
    makes automatic logging work.
 4) When you solve, the extension POSTs the time to `/api/auto-log` on its own and
-   shows a ✓ badge on the toolbar icon. A ! badge means it couldn't send — open
-   the popup to see why.
+   a small toast appears bottom-right of the puzzle page — `✓ 1:23 logged` — which
+   fades out after about four seconds, or on click. Amber means the day was
+   already on record; red means it couldn't send, with the reason.
 5) Open the popup any time to see the current timer and puzzle date, or to submit
    manually with **Refresh** then **Submit**. Manual date/time fields override
    what was read from the page.
+
+The toolbar badge is only used for problems, never for success — a `!` means at
+least one solve is still queued, and it stays until that clears. Success is the
+toast, so nothing lingers on the icon.
 
 ## How it works
 
 - `content.js` polls the on-page timer once a second, so the final time survives
   NYT removing the timer when the congrats dialog appears. It resolves the puzzle
-  date from the URL, then the date printed on the page, then today.
+  date from the URL, then the date printed on the page, then today. It also draws
+  the confirmation toast, in a shadow root so NYT's styles can't reach it.
 - `background.js` owns the token lookup and every POST, so manual and automatic
-  submissions take the same path. A solve that can't be sent (no signed-in tracker
-  tab, expired token) is queued and retried when a tracker tab loads or when you
-  open the popup.
+  submissions take the same path. A solve that can't be sent right away (no
+  signed-in tracker tab, expired token) is queued and retried **by a one-minute
+  alarm** until it lands, so it completes without you clicking anything. A tracker
+  tab loading, the popup opening, and a browser restart also trigger a retry.
+  After ~20 attempts the alarm stops, leaving the `!` badge — at that point
+  something needs a human, and retrying would just be waking tabs on a loop.
+- Tokens are cached in `chrome.storage.local` and trusted until the JWT's own
+  `exp` says otherwise, so a normal auto-log is one storage read plus one POST.
+  Going out to a tracker tab is the slow path — Chrome may have discarded the tab,
+  and waking it can take seconds — so it only happens when there's nothing usable
+  cached, on a 401, or when the tab loads and the cache is warmed for free. If the
+  server rejects a cached token anyway, one forced refresh is retried before
+  giving up. Timings for every submit are logged to the service worker console.
 - `popup.js` is just the UI — it asks the content script for the timer and hands
   submissions to the background worker.
 
@@ -51,9 +74,17 @@ otherwise the content script isn't running in it yet.
 - Each date is auto-logged once. The API also returns `already_logged` if the day
   already has an entry, so a manual re-submit can't create duplicates.
 - The API only accepts requests from allow-listed origins, including this
-  extension's ID. If you load the folder from a new path Chrome assigns a new ID,
-  and you'll get `403 Origin not allowed` until it's added to `allowedOrigins` in
-  `src/app/api/auto-log/route.ts`.
+  extension's ID. The ID is **pinned** by the `key` field in `manifest.json`, so
+  every install — yours, a friend's, any folder on any machine — resolves to
+  `nibbjcjdaadnhnibdbikkicjgcpijhee` and matches the allowlist in
+  `src/app/api/auto-log/route.ts`. Don't remove that `key`: without it Chrome
+  derives the ID from the install path, each machine gets a different one, and
+  everyone but you gets `403 Origin not allowed`. To allow an extra origin
+  without editing code, set `CORS_EXTENSION_ORIGIN` to a comma-separated list.
+- The private half of that key (`key.pem`) is gitignored and is **not** needed to
+  run or share the extension — only to publish this exact ID to the Chrome Web
+  Store. If you do publish, either upload using that keypair or drop the `key`
+  field and switch the allowlist to the Store-assigned ID.
 - Data you enter (token/API URL) is saved in `chrome.storage.local` inside the
   extension. The timer is read from the active tab and POSTed only when a token
   is available.

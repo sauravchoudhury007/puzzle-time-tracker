@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "NYT Mini Timer Peek",
   "description": "Shows the current NYT Mini timer and puzzle date from the active tab, and logs your time automatically when you solve.",
-  "version": "0.2.0",
+  "version": "0.4.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk5mdmWFS90HH1y1EBH3AimuBPbCpETpNnK42iwqHUMByzgFWIa0oOvYRB/AP9GwvRP2wsaDv8bQzSgpcECq91L5mxgI4+25GRv7gC+Kkz2O4gtm8ImlWUBpfiyhisEoeraEPZ9+m2lOmPByWPvFrZnBtnu0TREQMkijRFYfHxtP5TnQjGoZb6ZmQNgS2ylPqtdNabXe9jR2b29SYXJwowVCUNDHPTru7piPrxgH6ea9R/5m0jUrAC70RxKlOPUQMDw5seyQdOdHekz5hlf3aJn01GR6m0Ral17mgVpn8d+GYShqa1Bm/ho3defoC1UtsDDy+p30e0/TWB+EluCai3QIDAQAB",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -26,7 +27,8 @@
     "tabs",
     "storage",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "alarms"
   ],
   "host_permissions": [
     "https://www.nytimes.com/crosswords/game/mini*",

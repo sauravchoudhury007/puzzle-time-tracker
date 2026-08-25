@@ -16,8 +16,9 @@ const todayIso = () => {
   ).padStart(2, '0')}`
 }
 
-/** Evaluates content.js against the current DOM with a stubbed chrome API. */
-const loadContentScript = () => {
+/** Evaluates content.js against the current DOM with a stubbed chrome API.
+ *  `solveResponse` stands in for what the background worker replies with. */
+const loadContentScript = ({ solveResponse } = {}) => {
   const listeners = []
   const sent = []
   globalThis.chrome = {
@@ -25,7 +26,7 @@ const loadContentScript = () => {
       lastError: undefined,
       sendMessage: (message, callback) => {
         sent.push(message)
-        if (callback) callback()
+        if (callback) callback(solveResponse)
       },
       onMessage: { addListener: listener => listeners.push(listener) },
     },
@@ -40,6 +41,30 @@ const loadContentScript = () => {
     return payload
   }
   return { sent, ask }
+}
+
+// Mirrors TOAST_KIND in content.js — the discriminator on the worker's reply.
+const TOAST_KIND = 'nyt-mini-toast'
+
+const readToast = () => {
+  const host = document.getElementById('nyt-mini-timer-toast')
+  if (!host) return null
+  const root = host.shadowRoot
+  return {
+    mark: root.querySelector('.mark').textContent,
+    heading: root.querySelector('.heading').textContent,
+    sub: root.querySelector('.sub').textContent,
+  }
+}
+
+/** Plays through a solve so the background reply lands and the toast renders. */
+const solveWith = solveResponse => {
+  document.body.innerHTML = '<div class="timer-count">1:23</div>'
+  const loaded = loadContentScript({ solveResponse })
+  vi.advanceTimersByTime(1000)
+  document.body.innerHTML = CONGRATS
+  vi.advanceTimersByTime(1000)
+  return loaded
 }
 
 const CONGRATS = `
@@ -163,5 +188,85 @@ describe('solve detection', () => {
     const { sent } = loadContentScript()
     vi.advanceTimersByTime(10000)
     expect(sent).toHaveLength(0)
+  })
+})
+
+describe('confirmation toast', () => {
+  it('shows the posted time and date, then removes itself', () => {
+    solveWith({ kind: TOAST_KIND, ok: true, alreadyLogged: false, time: '1:23', date: '2026-08-04' })
+
+    expect(readToast()).toEqual({ mark: '✓', heading: '1:23 logged', sub: 'Aug 4' })
+
+    // The card is opacity:0 until this class lands, so it must actually apply.
+    const card = () =>
+      document.getElementById('nyt-mini-timer-toast').shadowRoot.querySelector('.card')
+    expect(card().classList.contains('in')).toBe(true)
+
+    // Visible window, then the fade-out.
+    vi.advanceTimersByTime(4000)
+    expect(readToast()).not.toBeNull()
+    vi.advanceTimersByTime(260)
+    expect(readToast()).toBeNull()
+  })
+
+  it('distinguishes a day that was already on record', () => {
+    solveWith({ kind: TOAST_KIND, ok: true, alreadyLogged: true, time: '0:58', date: '2026-08-04' })
+    expect(readToast()).toMatchObject({ mark: '✓', heading: '0:58 — already logged' })
+  })
+
+  it('reports a failure with the reason instead of a check', () => {
+    solveWith({
+      kind: TOAST_KIND,
+      ok: false,
+      alreadyLogged: false,
+      time: '2:05',
+      date: '2026-08-04',
+      detail: 'API 401: Unauthorized',
+    })
+    expect(readToast()).toEqual({
+      mark: '!',
+      heading: "Couldn't log 2:05",
+      sub: 'API 401: Unauthorized',
+    })
+  })
+
+  it('reads as pending, not failed, when the solve was queued for retry', () => {
+    solveWith({
+      kind: TOAST_KIND,
+      ok: false,
+      queued: true,
+      time: '1:23',
+      date: '2026-08-04',
+      detail: 'No valid token.',
+    })
+    expect(readToast()).toEqual({
+      mark: '⋯',
+      heading: '1:23 queued',
+      sub: 'Will retry on its own',
+    })
+  })
+
+  it('dismisses early on click', () => {
+    solveWith({ kind: TOAST_KIND, ok: true, alreadyLogged: false, time: '1:23', date: '2026-08-04' })
+    document.getElementById('nyt-mini-timer-toast').shadowRoot.querySelector('.card').click()
+    vi.advanceTimersByTime(260)
+    expect(readToast()).toBeNull()
+  })
+
+  it('shows nothing when the worker has nothing to report', () => {
+    solveWith(null)
+    expect(readToast()).toBeNull()
+  })
+
+  it('ignores a reply from an older background build', () => {
+    // The pre-toast worker answered {received:true}. Without the discriminator
+    // check that rendered as "Couldn't log undefined" while the POST succeeded.
+    solveWith({ received: true })
+    expect(readToast()).toBeNull()
+  })
+
+  it('ignores a well-labelled reply that is missing the time', () => {
+    solveWith({ kind: TOAST_KIND, ok: true, alreadyLogged: false })
+    expect(readToast()).toBeNull()
   })
 })

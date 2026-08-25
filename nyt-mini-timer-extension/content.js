@@ -99,11 +99,157 @@ const dateFromPage = () => {
 
 const getPuzzleDate = () => dateFromPath() || dateFromPage() || localDateIso()
 
+const TOAST_ID = 'nyt-mini-timer-toast'
+const TOAST_VISIBLE_MS = 4000
+const TOAST_FADE_MS = 260
+// Must match the `kind` the background worker stamps on its reply.
+const TOAST_KIND = 'nyt-mini-toast'
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// Formatted off the string rather than via Date, so the label can't slip a day.
+const formatDateLabel = iso => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '')
+  if (!match) return ''
+  return `${MONTHS[parseInt(match[2], 10) - 1]} ${parseInt(match[3], 10)}`
+}
+
+const TOAST_CSS = `
+  .card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #173464, #0b1f3f);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: #f3f6ff;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity ${TOAST_FADE_MS}ms ease, transform ${TOAST_FADE_MS}ms ease;
+  }
+  .card.in { opacity: 1; transform: none; }
+  .mark {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0b1224;
+  }
+  .heading { font-size: 14px; font-weight: 700; line-height: 1.3; }
+  .sub { margin-top: 1px; font-size: 12px; line-height: 1.3; color: #c7d8ff; }
+  @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+`
+
+/** Brief confirmation on the puzzle page itself, so the toolbar stays clean.
+ *  Ignores anything that isn't a well-formed toast — rendering a half-understood
+ *  reply is worse than staying silent. */
+const showToast = payload => {
+  if (!payload) return
+  if (payload.kind !== TOAST_KIND || typeof payload.time !== 'string') {
+    console.warn(
+      '[NYT Mini Timer] unrecognised reply, not showing a toast. The background ' +
+        'worker is probably an older build — reload the extension at chrome://extensions.',
+      payload
+    )
+    return
+  }
+  if (!document.body) return
+  const { ok, alreadyLogged, queued, time, date, detail } = payload
+
+  document.getElementById(TOAST_ID)?.remove()
+
+  const host = document.createElement('div')
+  host.id = TOAST_ID
+  host.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:2147483647;'
+  // Shadow DOM so nothing on the NYT page can restyle this, or vice versa.
+  const root = host.attachShadow({ mode: 'open' })
+
+  const style = document.createElement('style')
+  style.textContent = TOAST_CSS
+
+  const card = document.createElement('div')
+  card.className = 'card'
+
+  // Queued isn't a failure — it's sent, just not yet — so it reads differently
+  // from a real error the user might need to act on.
+  const state = ok ? (alreadyLogged ? 'duplicate' : 'logged') : queued ? 'queued' : 'failed'
+  const STATES = {
+    logged: {
+      glyph: '✓',
+      background: 'linear-gradient(135deg, #16a34a, #22d3ee)',
+      heading: `${time} logged`,
+      sub: formatDateLabel(date),
+    },
+    duplicate: {
+      glyph: '✓',
+      background: '#fbbf24',
+      heading: `${time} — already logged`,
+      sub: formatDateLabel(date),
+    },
+    queued: {
+      glyph: '⋯',
+      background: '#fbbf24',
+      heading: `${time} queued`,
+      sub: 'Will retry on its own',
+    },
+    failed: {
+      glyph: '!',
+      background: '#f87171',
+      heading: `Couldn't log ${time}`,
+      sub: detail || 'Open the extension for details',
+    },
+  }
+  const view = STATES[state]
+
+  const mark = document.createElement('div')
+  mark.className = 'mark'
+  mark.textContent = view.glyph
+  mark.style.background = view.background
+
+  const heading = document.createElement('div')
+  heading.className = 'heading'
+  heading.textContent = view.heading
+
+  const sub = document.createElement('div')
+  sub.className = 'sub'
+  sub.textContent = view.sub
+
+  const text = document.createElement('div')
+  text.append(heading, sub)
+  card.append(mark, text)
+  root.append(style, card)
+  document.body.appendChild(host)
+
+  const dismiss = () => {
+    card.classList.remove('in')
+    setTimeout(() => host.remove(), TOAST_FADE_MS)
+  }
+  card.addEventListener('click', dismiss)
+  // Force layout so the transition has a starting value, then reveal. Deliberately
+  // not requestAnimationFrame: it's suspended in hidden tabs, so tabbing away
+  // right after solving would leave the toast stuck at opacity 0.
+  card.getBoundingClientRect()
+  card.classList.add('in')
+  setTimeout(dismiss, TOAST_VISIBLE_MS)
+}
+
 const notifySolved = (seconds, date) => {
   try {
     chrome.runtime.sendMessage(
       { type: 'NYT_MINI_SOLVED', seconds, date, url: location.href },
-      () => void chrome.runtime.lastError
+      response => {
+        if (chrome.runtime.lastError) return
+        showToast(response)
+      }
     )
   } catch (err) {
     console.warn('[NYT Mini Timer] could not report solve', err)

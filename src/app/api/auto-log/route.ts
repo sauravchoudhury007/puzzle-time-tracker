@@ -9,12 +9,20 @@ const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
-// Lock CORS to your site and extension only.
-// You can override via env: CORS_ORIGIN and CORS_EXTENSION_ORIGIN.
+// Lock CORS to your site and the extension only.
+//
+// The extension pins its ID by shipping a public `key` in its manifest, so every
+// install resolves to this same ID no matter which folder it was loaded from.
+// (Without the key, Chrome derives the ID from the install path and each machine
+// gets a different one — which is what "Origin not allowed" used to mean.)
+const EXTENSION_ORIGIN = 'chrome-extension://nibbjcjdaadnhnibdbikkicjgcpijhee'
+
+// Override via env: CORS_ORIGIN for the site, CORS_EXTENSION_ORIGIN for a
+// comma-separated list of extra origins to allow alongside the pinned one.
 const allowedOrigins = [
   process.env.CORS_ORIGIN ?? 'https://sharvaniandsauravplayminis.mr007.ca',
-  process.env.CORS_EXTENSION_ORIGIN ?? 'chrome-extension://nagiconhkfiolipdggbjeibpmcjhdmko',
-  process.env.CORS_EXTENSION_ORIGIN ?? 'chrome-extension://oonicakajciodpnliikkogmoigijkldf',
+  EXTENSION_ORIGIN,
+  ...(process.env.CORS_EXTENSION_ORIGIN ?? '').split(',').map((o) => o.trim()),
 ].filter(Boolean)
 
 const buildCorsHeaders = (origin: string | null) => {
