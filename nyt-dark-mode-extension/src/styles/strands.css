@@ -31,8 +31,10 @@ html[data-nytx-game="strands"][data-nytx-dark="on"] [class*="_welcome"] {
 /* Letter buttons — ONLY lighten the glyph. Do not set any background or
  * hover color: Strands paints the drag-select highlight directly on the
  * letters (and draws connector lines/circles), so forcing a background here
- * hides the selection feedback entirely. */
-html[data-nytx-game="strands"][data-nytx-dark="on"] [data-testid="strands-board"] button {
+ * hides the selection feedback entirely. Letters Strands paints inline (found
+ * words: a light blue / yellow fill with dark --text-constant text) keep
+ * their own colors, or the letters turn white on light blue. */
+html[data-nytx-game="strands"][data-nytx-dark="on"] [data-testid="strands-board"] button:not([style]) {
   color: var(--nytx-text) !important;
 }
 

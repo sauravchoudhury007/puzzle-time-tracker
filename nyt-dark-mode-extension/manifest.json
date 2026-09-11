@@ -36,7 +36,8 @@
         "src/styles/connections.css",
         "src/styles/strands.css",
         "src/styles/mini.css",
-        "src/styles/wordle.css"
+        "src/styles/wordle.css",
+        "src/styles/archive.css"
       ],
       "js": ["src/settings.js", "src/darkmode.js", "src/spelling-bee.js"],
       "run_at": "document_start"

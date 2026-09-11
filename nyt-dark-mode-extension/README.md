@@ -17,6 +17,12 @@ true to the game), all driven by shared CSS variables:
 | The Mini | amber selected, blue highlighted answer | grid + clue lists |
 | Wordle | green/yellow tile states | **off by default** (Wordle has native dark mode) |
 
+Each game's archive follows the same toggle: the Wordle, Connections and
+Strands calendars (`/games/<game>/archive`) and the Spelling Bee **Past
+Puzzles** hub (`/puzzles/spelling-bee/hub`). The shared NYT chrome (game
+toolbar and its "More" menu, icon toolbar, modals, masthead) goes dark with
+every game.
+
 Configurable from the toolbar popup:
 - **Master** on/off and **per-game** on/off
 - **Darkness level**: Dim / Dark / OLED black
@@ -49,6 +55,11 @@ live score read from the rank bar's `aria-label`, so they update as you play.
 
 - `src/darkmode.js` (isolated world) sets `data-nytx-*` attributes on `<html>`;
   the CSS files in `src/styles/` are gated on those attributes.
+- NYT paints its shared chrome from its own theme tokens (`--bg-page`,
+  `--text`, …) but only switches them to dark on games that support its display
+  settings. `common.css` points those tokens at the extension's palette so the
+  toolbar, menus and modals follow the Dim / Dark / OLED setting;
+  `archive.css` covers the archive calendar and the Spelling Bee hub.
 - `src/sb-bridge.js` runs in the **main world** to read `window.gameData`
   (a content script can't see page globals) and posts it to
   `src/spelling-bee.js`, which renders the two helpers.

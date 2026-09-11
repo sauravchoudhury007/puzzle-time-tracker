@@ -40,6 +40,49 @@ html[data-nytx-dark="on"][data-nytx-accent="high"] {
   --nytx-accent-alpha: 1;
 }
 
+/* ---- NYT's own theme tokens ----
+ * NYT paints its shared chrome (game toolbar, "More" menu, modals, section
+ * rules, emphasis buttons) from custom properties like --bg-page and --text,
+ * declared on :root and on every [data-mode] element. NYT only swaps them to
+ * dark values on games that support its display settings, so on Spelling Bee
+ * and the archive pages they stay light: dark text on our dark background.
+ * Point the surface/text tokens at our palette (so they follow Dim / Dark /
+ * OLED) and use NYT's own dark values for the rest.
+ */
+html[data-nytx-dark="on"],
+html[data-nytx-dark="on"] [data-mode] {
+  --bg-page: var(--nytx-bg) !important;
+  --bg-toolbar: var(--nytx-bg) !important;
+  --bg-moment: var(--nytx-bg) !important;
+  --bg-page-subdued: var(--nytx-surface) !important;
+  --bg-modal: var(--nytx-surface) !important;
+  --bg-dropdown: var(--nytx-surface) !important;
+  --bg-tooltip: var(--nytx-surface-2) !important;
+  --bg-toolbar-selected: var(--nytx-surface-2) !important;
+  --text: var(--nytx-text) !important;
+  --stroke: var(--nytx-text) !important;
+  --stroke-tertiary: var(--nytx-border) !important;
+  --text-subdued: #dfdfdf !important;
+  --text-secondary: #bbbbbb !important;
+  --text-secondary-subdued: #a3a3a3 !important;
+  --text-secondary-inverse: #5a5a5a !important;
+  --text-quarternary: #363636 !important;
+  --text-alternate: #121212 !important;
+  --text-accent: #6ba1dd !important;
+  --text-positive: #63a859 !important;
+  --text-negative: #ea7980 !important;
+  --bg-scrim: #12121260 !important;
+  --bg-toast: #f8f8f8 !important;
+  --bg-toast-alternate: #5a5a5a !important;
+  --bg-toggle-deselected: #424242 !important;
+  --bg-toggle-selected: #f8f8f8 !important;
+  --bg-statsbar: #5a5a5a !important;
+  --bg-btn-emphasis: #ffffff !important;
+  --bg-btn-emphasis-pressed: #ffffffcc !important;
+  --bg-btn-standard-pressed: #f8f8f829 !important;
+  --stroke-btn-hover: #f8f8f829 !important;
+}
+
 /* ---- Base page paint (applies to every game) ---- */
 html[data-nytx-dark="on"],
 html[data-nytx-dark="on"] body {
@@ -70,7 +113,7 @@ html[data-nytx-dark="on"] .pz-game-screen,
 html[data-nytx-dark="on"] .pz-game-field,
 html[data-nytx-dark="on"] #pz-game-root,
 html[data-nytx-dark="on"] [class*="pz-game"],
-html[data-nytx-dark="on"] [class*="pz-toolbar"],
+html[data-nytx-dark="on"] [class*="pz-toolbar"]:not(.pz-toolbar-button):not(.pz-toolbar-icon),
 html[data-nytx-dark="on"] #portal-game-header,
 html[data-nytx-dark="on"] #portal-game-toolbar,
 html[data-nytx-dark="on"] #portal-editorial-content,
@@ -105,6 +148,73 @@ html[data-nytx-dark="on"] .pz-nav svg,
 html[data-nytx-dark="on"] [class*="pz-nav"] svg {
   fill: var(--nytx-text) !important;
   color: var(--nytx-text) !important;
+}
+/* The "T | Games" wordmark is a white plate with black letters: drop the
+ * plate and light the letters. */
+html[data-nytx-dark="on"] .pz-nav__logo rect {
+  fill: transparent !important;
+}
+html[data-nytx-dark="on"] .pz-nav__logo path {
+  fill: var(--nytx-text) !important;
+}
+/* Hamburger: its three bars are drawn with background-color, which the
+ * pz-nav paint above turns black-on-black. */
+html[data-nytx-dark="on"] .pz-nav__hamburger .pz-nav__hamburger-inner,
+html[data-nytx-dark="on"] .pz-nav__hamburger-inner::before,
+html[data-nytx-dark="on"] .pz-nav__hamburger-inner::after {
+  background-color: var(--nytx-text) !important;
+}
+
+/* ---- Game toolbar + "More" menu ----
+ * The strip holding Stats / Yesterday's Answers / Hints / More is a CSS-module
+ * container (ToolbarAdapter-module_…) the pz shell paint doesn't reach, so it
+ * stayed white while the buttons were painted black with near-black text.
+ * Paint the strip, keep the buttons clear, and replace NYT's hard-coded light
+ * (#f4f4f4) hover and open states. */
+html[data-nytx-dark="on"] [class*="ToolbarAdapter-module_toolbarContainer"] {
+  background-color: var(--nytx-bg) !important;
+  border-color: var(--nytx-border) !important;
+}
+html[data-nytx-dark="on"] .pz-toolbar-button,
+html[data-nytx-dark="on"] .pz-dropdown__button {
+  background-color: transparent !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-dark="on"] .pz-toolbar-button:hover,
+html[data-nytx-dark="on"] .pz-dropdown .pz-dropdown__button:hover,
+html[data-nytx-dark="on"] .pz-dropdown .pz-dropdown__button.pz-dropdown__show {
+  background-color: var(--nytx-surface-2) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-dark="on"] .pz-dropdown__list,
+html[data-nytx-dark="on"] .pz-dropdown__list .pz-dropdown__menu-item,
+html[data-nytx-dark="on"] .pz-dropdown__list .pz-dropdown__button {
+  background-color: var(--nytx-surface) !important;
+  border-color: var(--nytx-border) !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-dark="on"] .pz-dropdown__list .pz-dropdown__menu-item:hover,
+html[data-nytx-dark="on"] .pz-dropdown__list .pz-dropdown__menu-item:hover .pz-dropdown__button {
+  background-color: var(--nytx-surface-2) !important;
+}
+/* External-link / checkmark glyphs are dark SVG backgrounds. */
+html[data-nytx-dark="on"] .pz-toolbar-icon {
+  background-color: transparent !important;
+  filter: invert(1) !important;
+}
+
+/* Icon toolbar on Connections / Strands (hints · stats · help): white tiles
+ * that NYT only darkens under its own .dark / display-settings theme. The
+ * glyphs are fill: currentColor, so they follow the text color. */
+html[data-nytx-dark="on"] [class*="ToolbarItem-module_toolbar_item"],
+html[data-nytx-dark="on"] [class*="ToolbarItem-module_toolbarColors"] {
+  background-color: transparent !important;
+  color: var(--nytx-text) !important;
+}
+html[data-nytx-dark="on"] [class*="ToolbarItem-module_toolbar_itemDesktop"]:hover:not(:disabled),
+html[data-nytx-dark="on"] [class*="ToolbarItem-module_toolbarColorsDesktop"]:hover:not(:disabled),
+html[data-nytx-dark="on"] [class*="ToolbarItem-module_toolbar_item"][class*="ToolbarItem-module_toolbar_itemActive"] {
+  background-color: var(--nytx-surface-2) !important;
 }
 
 /* Title bar, byline and footer text need to flip to light on the dark shell */

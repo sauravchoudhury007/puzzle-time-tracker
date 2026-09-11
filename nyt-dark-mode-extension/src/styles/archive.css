@@ -1,0 +1,91 @@
+/* NYT Games Plus — archive pages.
+ * Wordle, Connections and Strands share one archive calendar (Archive*-module
+ * CSS modules) that hard-codes a white page, white month/year pickers and
+ * arrow buttons, and a light-grey "today" tile, so under the dark shell the
+ * weekday letters and dates (inherited light text) vanished into white.
+ * The Spelling Bee "Past Puzzles" hub is a separate layout, handled below.
+ * Class hashes change on NYT rebuilds, so rules match the stable
+ * "<Component>-module_<name>" prefix. Each page follows its game's toggle.
+ */
+
+/* ---- Shared archive calendar ---- */
+html[data-nytx-dark="on"] [class*="ArchiveLayout-module_wrapper"] {
+  background-color: var(--nytx-bg) !important;
+  color: var(--nytx-text) !important;
+}
+
+/* Month / year pickers: swap the white fill, and the dark caret (an SVG
+ * background) for a light one. */
+html[data-nytx-dark="on"] select[class*="ArchiveDatePicker-module_dropDownSelect"] {
+  background-color: var(--nytx-surface) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23e9e9e9'/%3E%3C/svg%3E") !important;
+  color: var(--nytx-text) !important;
+  border-color: var(--nytx-text-dim) !important;
+}
+
+/* Previous / next month */
+html[data-nytx-dark="on"] [class*="ArchiveDatePickerArrows-module_arrowButtons"] {
+  background-color: var(--nytx-surface) !important;
+  border-color: var(--nytx-border) !important;
+}
+html[data-nytx-dark="on"] [class*="ArchiveDatePickerArrows-module_arrowButtons"] svg [fill]:not([fill="none"]) {
+  fill: var(--nytx-text) !important;
+}
+/* NYT marks a disabled arrow (next month, from the current month) only with
+ * a lighter path fill, which the rule above replaces. */
+html[data-nytx-dark="on"] [class*="ArchiveDatePickerArrows-module_arrowButtons"]:disabled {
+  opacity: 0.4;
+}
+
+/* Rule under the S M T W T F S row */
+html[data-nytx-dark="on"] [class*="ArchiveCalendarGrid-module_daysOfWeekContainer"] {
+  border-bottom-color: var(--nytx-text-dim) !important;
+}
+
+/* Day tiles: the grey square behind each day's icon, today's outlined empty
+ * tile, and the dot marking unreleased days. */
+html[data-nytx-dark="on"] [class*="ArchiveCalendarItem-module_iconContainer"] {
+  background-color: var(--nytx-surface-2) !important;
+}
+html[data-nytx-dark="on"] [class*="ArchiveCalendarItem-module_iconBorder"] {
+  border-color: var(--nytx-text-dim) !important;
+}
+html[data-nytx-dark="on"] [class*="ArchiveCalendarItem-module_iconContainer"][class*="ArchiveCalendarItem-module_unreleased"] {
+  background-color: transparent !important;
+  opacity: 0.45;
+}
+
+/* ---- Spelling Bee "Past Puzzles" hub (/puzzles/spelling-bee/hub) ---- */
+/* The page background is two black dashed doodles over a two-tone gradient
+ * (white hero band, light grey list band). Drop the doodles (black-on-black)
+ * and repaint the bands in our palette. Keep three layers so NYT's
+ * background-position list still lines up with the gradient. */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] [class*="Layout-module_outerWrapper"] {
+  background-image: none, none, linear-gradient(var(--nytx-bg) 377px, var(--nytx-surface) 377px) !important;
+  border-bottom-color: var(--nytx-border) !important;
+}
+@media (max-width: 991.98px) {
+  html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] [class*="Layout-module_outerWrapper"] {
+    background-image: none, none, linear-gradient(var(--nytx-bg) 332px, var(--nytx-surface) 332px) !important;
+  }
+}
+@media (max-width: 767.98px) {
+  html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] [class*="Layout-module_outerWrapper"] {
+    background-image: none, none, linear-gradient(var(--nytx-bg) 306px, var(--nytx-surface) 306px) !important;
+  }
+}
+
+/* "Past Puzzles" and week headings: the generic [class*="Header"] paint in
+ * common.css would draw black slabs across the lighter list band. */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] [class*="PastPuzzlesSections-module"][class*="eader"] {
+  background-color: transparent !important;
+}
+
+/* Today's card stays Bee yellow, so its text has to stay dark. */
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] [class*="HeroCard-module_heroCard_"] {
+  color: #121212 !important;
+}
+html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] [class*="HeroCard-module_heroCard_"] [class*="eader"] {
+  background-color: transparent !important;
+  color: inherit !important;
+}
