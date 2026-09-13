@@ -1,203 +1,338 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import NavPill from '@/components/NavPill';
-import { toDateKey, parseDateKey, addDays } from '@/lib/dateUtils';
+import { useState } from 'react'
+import { supabase } from '@/lib/supabaseClient'
+import NavBar from '@/components/pulse/NavBar'
+import { Card, PageShell } from '@/components/pulse/Surface'
+import { invalidatePuzzleTimes } from '@/hooks/usePuzzleTimes'
+import { toDateKey, parseDateKey, addDays } from '@/lib/dateUtils'
+
+const buttonStyle = (disabled: boolean, tone: 'accent' | 'ink' = 'accent') => ({
+  width: '100%',
+  background: disabled ? 'var(--surface2)' : tone === 'accent' ? 'var(--accent)' : 'var(--ink)',
+  color: disabled ? 'var(--muted)' : tone === 'accent' ? '#0c0c0a' : 'var(--bg)',
+  border: disabled ? '1px solid var(--rule-soft)' : 0,
+  borderRadius: 'var(--card-r)',
+  padding: '14px 20px',
+  fontFamily: 'var(--mono)',
+  fontSize: 12,
+  fontWeight: 600,
+  letterSpacing: '.22em',
+  textTransform: 'uppercase' as const,
+  cursor: disabled ? 'default' : 'pointer',
+})
 
 export default function DataPage() {
-  const [loadingExport, setLoadingExport] = useState(false);
-  const [loadingImport, setLoadingImport] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [importSuccess, setImportSuccess] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loadingExport, setLoadingExport] = useState(false)
+  const [loadingImport, setLoadingImport] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importSuccess, setImportSuccess] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setSelectedFile(file);
-    setImportError(null);
-    setImportSuccess(null);
-  };
+    setSelectedFile(e.target.files?.[0] || null)
+    setImportError(null)
+    setImportSuccess(null)
+  }
 
   const handleImport = async () => {
-    if (!selectedFile) return;
-    const file = selectedFile;
+    if (!selectedFile) return
+    const file = selectedFile
 
-    // Authenticate user for RLS
     const {
       data: { session },
       error: sessionError,
-    } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
+    } = await supabase.auth.getSession()
+    const userId = session?.user?.id
     if (sessionError || !userId) {
-      setImportError('Unable to authenticate user.');
-      setLoadingImport(false);
-      return;
+      setImportError('Unable to authenticate user.')
+      return
     }
 
-    setLoadingImport(true);
-    setImportError(null);
-    setImportSuccess(null);
+    setLoadingImport(true)
+    setImportError(null)
+    setImportSuccess(null)
 
     try {
-      const text = await file.text();
-      const lines = text.trim().split('\n');
-      const [headerLine, ...rows] = lines;
-      const headers = headerLine.trim().split(',');
-      const dateIndex = headers.indexOf('date');
-      const timeSecondsIndex = headers.indexOf('time_seconds');
+      const text = await file.text()
+      const lines = text.trim().split('\n')
+      const [headerLine, ...rows] = lines
+      const headers = headerLine.trim().split(',')
+      const dateIndex = headers.indexOf('date')
+      const timeSecondsIndex = headers.indexOf('time_seconds')
 
       if (dateIndex === -1 || timeSecondsIndex === -1) {
-        setImportError('Invalid CSV header. Must contain "date" and "time_seconds".');
-        setLoadingImport(false);
-        return;
+        setImportError('Invalid CSV header. Must contain "date" and "time_seconds".')
+        setLoadingImport(false)
+        return
       }
 
-      const toUpsert = [];
-      const errors: string[] = [];
+      const toUpsert = []
+      const errors: string[] = []
       for (const [idx, line] of rows.entries()) {
-        const parts = line.split(',');
-        const date = parts[dateIndex];
-        const secondsStr = parts[timeSecondsIndex];
-        
+        const parts = line.split(',')
+        const date = parts[dateIndex]
+        const secondsStr = parts[timeSecondsIndex]
+
         if (!date || !secondsStr || isNaN(Number(secondsStr))) {
-          // Skip empty rows or invalid formats
-          if (date && (!secondsStr || isNaN(Number(secondsStr)))) continue; 
-          errors.push(`Line ${idx + 2}: invalid format`);
-          continue;
+          // Skip blank rows; only flag rows that look like real but broken data.
+          if (date && (!secondsStr || isNaN(Number(secondsStr)))) continue
+          errors.push(`Line ${idx + 2}: invalid format`)
+          continue
         }
-        toUpsert.push({ user_id: userId, date, time_seconds: Number(secondsStr) });
+        toUpsert.push({ user_id: userId, date, time_seconds: Number(secondsStr) })
       }
 
       const { error } = await supabase
         .from('puzzle_times')
-        .upsert(toUpsert, { onConflict: 'user_id,date' });
+        .upsert(toUpsert, { onConflict: 'user_id,date' })
       if (error) {
-        setImportError(error.message);
+        setImportError(error.message)
       } else {
+        invalidatePuzzleTimes()
         setImportSuccess(
           `Imported ${toUpsert.length - errors.length} rows${errors.length ? `, ${errors.length} skipped` : ''}.`
-        );
+        )
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setImportError(message);
+      setImportError(err instanceof Error ? err.message : String(err))
     }
 
-    setLoadingImport(false);
-  };
+    setLoadingImport(false)
+  }
 
   const handleExport = async () => {
-    setLoadingExport(true);
+    setLoadingExport(true)
+    setImportError(null)
+
     const { data, error } = await supabase
       .from('puzzle_times')
       .select('date, time_seconds')
-      .order('date', { ascending: true });
-    
+      .order('date', { ascending: true })
+
     if (error || !data) {
-      setImportError(error?.message || 'Export failed');
-      setLoadingExport(false);
-      return;
+      setImportError(error?.message || 'Export failed')
+      setLoadingExport(false)
+      return
     }
 
     if (data.length === 0) {
-      setImportError('No data found to export');
-      setLoadingExport(false);
-      return;
+      setImportError('No data found to export')
+      setLoadingExport(false)
+      return
     }
 
-    const firstDate = parseDateKey(data[0].date.slice(0, 10));
-    const lastDate = parseDateKey(data[data.length - 1].date.slice(0, 10));
-    
-    const dataMap = new Map(
-      data.map(row => [row.date.slice(0, 10), row.time_seconds])
-    );
+    const firstDate = parseDateKey(data[0].date.slice(0, 10))
+    const lastDate = parseDateKey(data[data.length - 1].date.slice(0, 10))
+    const dataMap = new Map(data.map(row => [row.date.slice(0, 10), row.time_seconds]))
 
-    const header = 'date,Solved Time,time_seconds';
-    const csvRows: string[] = [];
+    const header = 'date,Solved Time,time_seconds'
+    const csvRows: string[] = []
 
-    let current = firstDate;
+    let current = firstDate
     while (current <= lastDate) {
-      const key = toDateKey(current);
-      const timeSeconds = dataMap.get(key);
-      
-      let row = `${key},`;
+      const key = toDateKey(current)
+      const timeSeconds = dataMap.get(key)
+
+      let row = `${key},`
       if (timeSeconds !== undefined && timeSeconds !== null) {
-        const minutes = Math.floor(timeSeconds / 60);
-        const seconds = timeSeconds % 60;
-        const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        // Prepend a tab character to force Excel to treat this as text
-        row += `\t${formattedTime},${timeSeconds}`;
+        const minutes = Math.floor(timeSeconds / 60)
+        const seconds = timeSeconds % 60
+        // Leading tab keeps Excel from reading M:SS as a date.
+        row += `\t${minutes}:${seconds.toString().padStart(2, '0')},${timeSeconds}`
       } else {
-        row += ',';
+        row += ','
       }
-      csvRows.push(row);
-      current = addDays(current, 1);
+      csvRows.push(row)
+      current = addDays(current, 1)
     }
 
-    const csvString = [header, ...csvRows].join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `puzzle_times_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setLoadingExport(false);
-  };
+    const blob = new Blob([[header, ...csvRows].join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `puzzle_times_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    setLoadingExport(false)
+  }
 
   return (
-    <main className="relative mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-5 py-16">
-      <div className="space-y-3">
-        <NavPill currentHref="/data" />
-        <h1 className="text-3xl font-extrabold text-white md:text-4xl">Import & Export</h1>
-      </div>
+    <main style={{ background: 'var(--bg)', color: 'var(--ink)', minHeight: '100vh' }}>
+      <NavBar />
 
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_0%,rgba(255,255,255,0.1),transparent_45%)]" />
-        <div className="relative grid gap-10 lg:grid-cols-2">
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">Export your data</h2>
-            <p className="text-sm text-white/70">
-              Generates a CSV with all dates from your first to last entry. 
-              Includes a formatted `Solved Time` (M:SS) and time in seconds.
+      <PageShell maxWidth={1080}>
+        <div style={{ marginBottom: 32 }}>
+          <div className="eyebrow">Import &amp; export</div>
+          <h1
+            style={{
+              fontFamily: 'var(--serif)',
+              fontStyle: 'italic',
+              fontSize: 'clamp(44px, 8vw, 84px)',
+              lineHeight: 0.95,
+              letterSpacing: '-.03em',
+              margin: '14px 0 0',
+              fontWeight: 400,
+            }}
+          >
+            The whole ledger, portable.
+          </h1>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 20,
+          }}
+        >
+          <Card>
+            <div className="eyebrow">Export</div>
+            <div
+              style={{
+                fontFamily: 'var(--sans)',
+                fontWeight: 700,
+                fontSize: 22,
+                marginTop: 4,
+                marginBottom: 12,
+                letterSpacing: '-.01em',
+              }}
+            >
+              Download a CSV
+            </div>
+            <p
+              style={{
+                fontFamily: 'var(--sans)',
+                fontSize: 14,
+                color: 'var(--muted)',
+                lineHeight: 1.6,
+                marginTop: 0,
+                marginBottom: 22,
+              }}
+            >
+              Every date from your first entry to your last, with a formatted{' '}
+              <code style={{ fontFamily: 'var(--mono)' }}>Solved Time</code> (M:SS) alongside the raw
+              seconds. Unlogged days come through blank.
             </p>
             <button
+              type="button"
               onClick={handleExport}
               disabled={loadingExport}
-              className="w-full rounded-xl border border-sky-300/40 bg-gradient-to-r from-sky-500/80 to-indigo-500/80 px-4 py-3 text-sm font-semibold text-white shadow-[0_15px_40px_rgba(56,189,248,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(99,102,241,0.35)] disabled:opacity-60"
+              style={buttonStyle(loadingExport)}
             >
               {loadingExport ? 'Exporting…' : 'Download CSV'}
             </button>
-          </div>
+          </Card>
 
-          <div className="space-y-4 rounded-2xl border border-white/10 bg-[#0c182e]/80 p-6 shadow-inner backdrop-blur-xl">
-            <h2 className="text-xl font-semibold text-white">Import a CSV</h2>
-            <p className="text-sm text-white/70">
-              Uses RLS with your session. Accepts CSV with `date` and `time_seconds` columns.
+          <Card>
+            <div className="eyebrow">Import</div>
+            <div
+              style={{
+                fontFamily: 'var(--sans)',
+                fontWeight: 700,
+                fontSize: 22,
+                marginTop: 4,
+                marginBottom: 12,
+                letterSpacing: '-.01em',
+              }}
+            >
+              Upload a CSV
+            </div>
+            <p
+              style={{
+                fontFamily: 'var(--sans)',
+                fontSize: 14,
+                color: 'var(--muted)',
+                lineHeight: 1.6,
+                marginTop: 0,
+                marginBottom: 18,
+              }}
+            >
+              Needs <code style={{ fontFamily: 'var(--mono)' }}>date</code> and{' '}
+              <code style={{ fontFamily: 'var(--mono)' }}>time_seconds</code> columns. Rows are
+              upserted against your own account, so re-importing is safe.
             </p>
-            <label className="flex flex-col gap-2 text-sm text-white/80">
-              <span className="text-xs uppercase tracking-[0.18em] text-white/60">Upload CSV</span>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                disabled={loadingImport}
-                className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white file:mr-3 file:rounded-lg file:border-0 file:bg-sky-500/80 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-              />
-            </label>
+
+            <div style={{ marginBottom: 18 }}>
+              <span className="eyebrow">CSV file</span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginTop: 8,
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--rule-soft)',
+                  borderRadius: 'var(--card-r)',
+                  padding: 10,
+                }}
+              >
+                <label
+                  style={{
+                    background: 'var(--ink)',
+                    color: 'var(--bg)',
+                    borderRadius: 99,
+                    padding: '8px 16px',
+                    fontFamily: 'var(--mono)',
+                    fontSize: 11,
+                    letterSpacing: '.14em',
+                    textTransform: 'uppercase',
+                    cursor: loadingImport ? 'default' : 'pointer',
+                    flex: '0 0 auto',
+                  }}
+                >
+                  Choose file
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    disabled={loadingImport}
+                  />
+                </label>
+                <span
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: 12,
+                    color: selectedFile ? 'var(--ink)' : 'var(--muted)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {selectedFile ? selectedFile.name : 'No file chosen'}
+                </span>
+              </div>
+            </div>
+
             <button
+              type="button"
               onClick={handleImport}
               disabled={!selectedFile || loadingImport}
-              className="w-full rounded-xl border border-emerald-300/40 bg-gradient-to-r from-emerald-500/80 to-teal-500/80 px-4 py-3 text-sm font-semibold text-white shadow-[0_15px_40px_rgba(16,185,129,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(20,184,166,0.35)] disabled:opacity-60"
+              style={buttonStyle(!selectedFile || loadingImport, 'ink')}
             >
               {loadingImport ? 'Importing…' : 'Upload CSV'}
             </button>
-            {importError && <p className="text-sm text-rose-300">{importError}</p>}
-            {importSuccess && <p className="text-sm text-emerald-200">{importSuccess}</p>}
-          </div>
+
+            {importError && (
+              <p
+                role="status"
+                style={{ marginTop: 16, fontSize: 14, color: 'var(--negative)', fontFamily: 'var(--sans)' }}
+              >
+                {importError}
+              </p>
+            )}
+            {importSuccess && (
+              <p
+                role="status"
+                style={{ marginTop: 16, fontSize: 14, color: 'var(--accent)', fontFamily: 'var(--sans)' }}
+              >
+                {importSuccess}
+              </p>
+            )}
+          </Card>
         </div>
-      </section>
+      </PageShell>
     </main>
-  );
+  )
 }

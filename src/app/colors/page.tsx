@@ -1,112 +1,285 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { DYNAMIC_CELL_CLASS, getLevelStyle } from '@/lib/colorUtils'
+import { useEffect, useState } from 'react'
+import NavBar from '@/components/pulse/NavBar'
+import { Card, PageShell } from '@/components/pulse/Surface'
+import { yearCellVars } from '@/lib/colorUtils'
+import { PULSE_DARK, PULSE_LIGHT } from '@/lib/theme'
+
+const TOKEN_ROWS = [
+  { name: 'bg', note: 'Page ground' },
+  { name: 'surface', note: 'Card' },
+  { name: 'surface2', note: 'Inset / pill track' },
+  { name: 'ink', note: 'Body text' },
+  { name: 'muted', note: 'Secondary text' },
+  { name: 'accent', note: 'Electric lime' },
+  { name: 'negative', note: 'Errors' },
+] as const
 
 export default function ColorsPage() {
-    const [mounted, setMounted] = useState(false)
-    const startYear = 2014
-    const endYear = 2035
-    const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
-    // Use state for random values to avoid hydration mismatch
-    const [data, setData] = useState<{ year: number; levels: number[] }[]>([])
+  const legacyYears = Array.from({ length: 22 }, (_, i) => 2014 + i)
 
-    useEffect(() => {
-        setMounted(true)
-        const newData = years.map((year) => ({
-            year,
-            // Generate 20 random levels (1-4) for each year to avoid grey blocks
-            levels: Array.from({ length: 20 }, () => Math.floor(Math.random() * 4) + 1),
-        }))
-        setData(newData)
-    }, [years]) // Run once on mount
+  return (
+    <main style={{ background: 'var(--bg)', color: 'var(--ink)', minHeight: '100vh' }}>
+      <NavBar />
 
-    if (!mounted) return null
+      <PageShell maxWidth={1080}>
+        <div style={{ marginBottom: 32 }}>
+          <div className="eyebrow">Design reference</div>
+          <h1
+            style={{
+              fontFamily: 'var(--serif)',
+              fontStyle: 'italic',
+              fontSize: 'clamp(44px, 8vw, 84px)',
+              lineHeight: 0.95,
+              letterSpacing: '-.03em',
+              margin: '14px 0 0',
+              fontWeight: 400,
+            }}
+          >
+            Pulse, in swatches.
+          </h1>
+        </div>
 
-    return (
-        <main className="min-h-screen p-8 bg-[#050b1c] text-white space-y-12">
-            <section>
-                <h1 className="text-3xl font-bold mb-8">Color Visualization (2014-2035) Continuous Block</h1>
+        {/* ── Palette ──────────────────────────────────────── */}
+        <Card style={{ marginBottom: 20 }}>
+          <div className="eyebrow">Palette</div>
+          <div
+            style={{
+              fontFamily: 'var(--sans)',
+              fontWeight: 700,
+              fontSize: 22,
+              marginTop: 4,
+              marginBottom: 20,
+              letterSpacing: '-.01em',
+            }}
+          >
+            Tokens, light and dark
+          </div>
 
-                {/* One continuous container */}
-                <div className="flex flex-wrap gap-1 max-w-6xl mx-auto p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_25px_80px_rgba(0,0,0,0.4)]">
-                    {data.map(({ year, levels }) => (
-                        <React.Fragment key={year}>
-                            {/* Year Marker */}
-                            <div className="h-4 px-1 flex items-center justify-center text-[10px] font-mono text-white/50 select-none bg-white/5 rounded-sm ml-1 first:ml-0">
-                                {year}
-                            </div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {TOKEN_ROWS.map(row => (
+              <div
+                key={row.name}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(120px, 1fr) 1fr 1fr',
+                  gap: 12,
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>--{row.name}</div>
+                  <div style={{ fontFamily: 'var(--sans)', fontSize: 11, color: 'var(--muted)' }}>
+                    {row.note}
+                  </div>
+                </div>
+                <Swatch color={PULSE_LIGHT[row.name]} label="light" />
+                <Swatch color={PULSE_DARK[row.name]} label="dark" />
+              </div>
+            ))}
+          </div>
+        </Card>
 
-                            {/* Cells for this year */}
-                            {levels.map((level, i) => {
-                                const style = getLevelStyle(year, level)
-                                const cellClass = level > 0 ? DYNAMIC_CELL_CLASS : 'bg-zinc-800 border border-zinc-700/60'
+        {/* ── Heatmap ramp ─────────────────────────────────── */}
+        <Card style={{ marginBottom: 20 }}>
+          <div className="eyebrow">Activity ramp</div>
+          <div
+            style={{
+              fontFamily: 'var(--sans)',
+              fontWeight: 700,
+              fontSize: 22,
+              marginTop: 4,
+              marginBottom: 20,
+              letterSpacing: '-.01em',
+            }}
+          >
+            Slower → faster
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[0, 1, 2, 3, 4].map(level => (
+              <div key={level} style={{ textAlign: 'center' }}>
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    background: `var(--hm-${level})`,
+                    borderRadius: 'var(--cell-r)',
+                    border: '1px solid var(--rule-soft)',
+                  }}
+                />
+                <div
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: 10,
+                    color: 'var(--muted)',
+                    marginTop: 6,
+                  }}
+                >
+                  {level === 0 ? 'none' : `L${level}`}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p
+            style={{
+              fontFamily: 'var(--sans)',
+              fontSize: 13,
+              color: 'var(--muted)',
+              marginTop: 18,
+              marginBottom: 0,
+              lineHeight: 1.6,
+            }}
+          >
+            L4 ≤ 60s · L3 ≤ 90s · L2 ≤ 120s · L1 slower than that.
+          </p>
+        </Card>
 
-                                return (
-                                    <div
-                                        key={`${year}-${i}`}
-                                        className={`h-4 w-4 rounded-sm transition-opacity hover:opacity-80 ${cellClass}`}
-                                        style={style}
-                                        title={`${year} - Level ${level}`}
-                                    />
-                                )
-                            })}
-                        </React.Fragment>
+        {/* ── Type ─────────────────────────────────────────── */}
+        <Card style={{ marginBottom: 20 }}>
+          <div className="eyebrow">Type</div>
+          <div
+            style={{
+              fontFamily: 'var(--sans)',
+              fontWeight: 700,
+              fontSize: 22,
+              marginTop: 4,
+              marginBottom: 20,
+              letterSpacing: '-.01em',
+            }}
+          >
+            Three faces
+          </div>
+          <div style={{ display: 'grid', gap: 20 }}>
+            <TypeRow token="--serif" note="Instrument Serif italic — page titles">
+              <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 42 }}>
+                Ten years, on one wall.
+              </span>
+            </TypeRow>
+            <TypeRow token="--sans" note="Inter 700 — numbers and headings">
+              <span
+                className="tnum"
+                style={{
+                  fontFamily: 'var(--sans)',
+                  fontWeight: 700,
+                  fontSize: 42,
+                  letterSpacing: '-.03em',
+                }}
+              >
+                1:06
+              </span>
+            </TypeRow>
+            <TypeRow token="--mono" note="JetBrains Mono — eyebrows and labels">
+              <span className="eyebrow" style={{ fontSize: 13 }}>
+                Activity grid · 2026
+              </span>
+            </TypeRow>
+          </div>
+        </Card>
+
+        {/* ── Legacy ramp ──────────────────────────────────── */}
+        <Card>
+          <div className="eyebrow">Archive palette</div>
+          <div
+            style={{
+              fontFamily: 'var(--sans)',
+              fontWeight: 700,
+              fontSize: 22,
+              marginTop: 4,
+              marginBottom: 8,
+              letterSpacing: '-.01em',
+            }}
+          >
+            Per-year hue ramp
+          </div>
+          <p
+            style={{
+              fontFamily: 'var(--sans)',
+              fontSize: 13,
+              color: 'var(--muted)',
+              marginTop: 0,
+              marginBottom: 20,
+              lineHeight: 1.6,
+              maxWidth: 560,
+            }}
+          >
+            Hue rotates 20° per year from emerald in 2014, with four levels from slow to fast. This
+            is what the activity grid and the Frame poster are coloured with — the lime ramp above
+            stays for the live, single-value surfaces.
+          </p>
+          {mounted && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {legacyYears.map(year => (
+                <div key={year} style={{ textAlign: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {[4, 3, 2, 1].map(level => (
+                      <div
+                        key={level}
+                        className="hm-year"
+                        title={`${year} · level ${level}`}
+                        style={{ width: 22, height: 14, borderRadius: 2, ...yearCellVars(year, level) }}
+                      />
                     ))}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--mono)',
+                      fontSize: 9,
+                      color: 'var(--muted)',
+                      marginTop: 4,
+                    }}
+                  >
+                    {`'${String(year).slice(2)}`}
+                  </div>
                 </div>
-            </section>
+              ))}
+            </div>
+          )}
+        </Card>
+      </PageShell>
+    </main>
+  )
+}
 
-            <section>
-                <h1 className="text-3xl font-bold mb-8">Year by Year Row View</h1>
+function Swatch({ color, label }: { color: string; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div
+        style={{
+          width: 40,
+          height: 28,
+          background: color,
+          borderRadius: 6,
+          border: '1px solid var(--rule-soft)',
+          flex: '0 0 auto',
+        }}
+      />
+      <div>
+        <div style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{color}</div>
+        <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--muted)' }}>{label}</div>
+      </div>
+    </div>
+  )
+}
 
-                <div className="flex flex-col gap-4 max-w-6xl mx-auto p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_25px_80px_rgba(0,0,0,0.4)]">
-                    {data.map(({ year, levels }) => (
-                        <div key={year} className="flex items-center gap-4">
-                            {/* Year Label */}
-                            <div className="w-12 text-sm font-mono text-white/70">
-                                {year}
-                            </div>
-
-                            {/* Cells row */}
-                            <div className="flex flex-wrap gap-1">
-                                {levels.map((level, i) => {
-                                    const style = getLevelStyle(year, level)
-                                    const cellClass = level > 0 ? DYNAMIC_CELL_CLASS : 'bg-zinc-800 border border-zinc-700/60'
-
-                                    return (
-                                        <div
-                                            key={`${year}-${i}`}
-                                            className={`h-4 w-4 rounded-sm transition-opacity hover:opacity-80 ${cellClass}`}
-                                            style={style}
-                                            title={`${year} - Level ${level}`}
-                                        />
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            <section>
-                <h1 className="text-3xl font-bold mb-8">Compact Hue Progression (Level 4 Only)</h1>
-
-                <div className="flex flex-wrap gap-1 max-w-6xl mx-auto p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_25px_80px_rgba(0,0,0,0.4)]">
-                    {data.map(({ year }) => {
-                        // Always use level 4 for the "highest level"
-                        const style = getLevelStyle(year, 4)
-                        return (
-                            <div
-                                key={year}
-                                className={`h-6 w-6 rounded-md transition-opacity hover:opacity-80 ${DYNAMIC_CELL_CLASS}`}
-                                style={style}
-                                title={`${year} - Level 4`}
-                            />
-                        )
-                    })}
-                </div>
-            </section>
-        </main>
-    )
+function TypeRow({
+  token,
+  note,
+  children,
+}: {
+  token: string
+  note: string
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{ borderTop: '1px solid var(--rule-soft)', paddingTop: 16 }}>
+      <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>
+        {token} — {note}
+      </div>
+      {children}
+    </div>
+  )
 }

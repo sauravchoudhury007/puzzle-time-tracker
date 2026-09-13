@@ -37,7 +37,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--bg)',
+          color: 'var(--muted)',
+          fontFamily: 'var(--mono)',
+          fontSize: 11,
+          letterSpacing: '.24em',
+          textTransform: 'uppercase',
+        }}
+      >
         Loading…
       </div>
     )

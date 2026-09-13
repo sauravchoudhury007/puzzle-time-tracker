@@ -1,665 +1,515 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  BarChart,
-  Bar,
-  Cell,
-} from 'recharts'
-import NavPill from '@/components/NavPill'
+import { useMemo, useState } from 'react'
+import NavBar from '@/components/pulse/NavBar'
+import { Card, CardHeading, PageShell, Stat } from '@/components/pulse/Surface'
+import Heatmap, { HeatmapLegend } from '@/components/pulse/Heatmap'
+import { BestProgression, HistBar, LineChart, RadialDow } from '@/components/pulse/charts'
+import { usePuzzleTimes } from '@/hooks/usePuzzleTimes'
+import { fmtDateShort, fmtTime } from '@/lib/format'
+import { filterByRange } from '@/lib/puzzleStats'
 
-interface Summary {
-  total_puzzles: number
-  avg_time_seconds: number
-}
+const RANGES = [
+  { value: '1m', label: '1M' },
+  { value: '3m', label: '3M' },
+  { value: '6m', label: '6M' },
+  { value: '1y', label: '1Y' },
+  { value: 'all', label: 'All' },
+]
 
-interface TimeBucket {
-  period: string
-  avg_time_seconds: number
-  moving_avg_7?: number
-  moving_avg_30?: number
-}
-
-interface PuzzleTime {
-  date: string
-  time_seconds: number
-}
-
-interface DistributionBucket {
-  label: string
-  percent: number
-  count: number
-}
-
-interface DayOfWeekBucket {
-  day: string
-  avg_time_seconds: number
-}
-
-interface DashboardData {
-  summary: Summary | null
-  weekly: TimeBucket[]
-  monthly: TimeBucket[]
-  topFastest: PuzzleTime[]
-  topSlowest: PuzzleTime[]
-  distribution: DistributionBucket[]
-  dayOfWeekStats: DayOfWeekBucket[]
-  totalSeconds: number
-}
-
-let cachedDashboardData: DashboardData | null = null
-let dashboardFetchPromise: Promise<DashboardData> | null = null
-
-async function fetchDashboardData(): Promise<DashboardData> {
-  const { data: sum } = await supabase
-    .from('user_stats_all_time')
-    .select('*')
-    .single()
-
-  const { data: wk } = await supabase
-    .from('user_weekly_stats')
-    .select('week_start, avg_time_seconds')
-    .order('week_start', { ascending: true })
-
-  const weekly: TimeBucket[] = (wk || []).map(item => ({
-    period: String(item.week_start).slice(0, 10),
-    avg_time_seconds: item.avg_time_seconds,
-  }))
-
-  const { data: mo } = await supabase
-    .from('user_monthly_stats')
-    .select('month_start, avg_time_seconds')
-    .order('month_start', { ascending: true })
-
-  const monthly: TimeBucket[] = (mo || []).map(item => ({
-    period: String(item.month_start).slice(0, 10),
-    avg_time_seconds: item.avg_time_seconds,
-  }))
-
-  const { data: allTimes } = await supabase
-    .from('puzzle_times')
-    .select('date, time_seconds')
-    .order('date', { ascending: true })
-
-  // Calculate moving averages for weekly buckets
-  if (allTimes && allTimes.length > 0) {
-    weekly.forEach((wkBucket) => {
-      const bucketDate = new Date(wkBucket.period)
-      // 7-day window ending at bucket start
-      const windowStart = new Date(bucketDate)
-      windowStart.setUTCDate(windowStart.getUTCDate() - 6)
-      
-      const inWindow = allTimes.filter((t) => {
-          const d = new Date(t.date)
-          return d >= windowStart && d <= bucketDate
-      })
-      
-      if (inWindow.length > 0) {
-          const sum = inWindow.reduce((acc, curr) => acc + curr.time_seconds, 0)
-          wkBucket.moving_avg_7 = sum / inWindow.length
-      }
-
-      // 30-day window ending at bucket start
-      const windowStart30 = new Date(bucketDate)
-      windowStart30.setUTCDate(windowStart30.getUTCDate() - 29)
-      
-      const inWindow30 = allTimes.filter((t) => {
-          const d = new Date(t.date)
-          return d >= windowStart30 && d <= bucketDate
-      })
-      
-      if (inWindow30.length > 0) {
-          const sum = inWindow30.reduce((acc, curr) => acc + curr.time_seconds, 0)
-          wkBucket.moving_avg_30 = sum / inWindow30.length
-      }
-    })
-    
-     monthly.forEach((moBucket) => {
-      const bucketDate = new Date(moBucket.period)
-      // 30-day window ending at bucket start
-      const windowStart30 = new Date(bucketDate)
-      windowStart30.setUTCDate(windowStart30.getUTCDate() - 29)
-      
-      const inWindow30 = allTimes.filter((t) => {
-          const d = new Date(t.date)
-          return d >= windowStart30 && d <= bucketDate
-      })
-      
-      if (inWindow30.length > 0) {
-          const sum = inWindow30.reduce((acc, curr) => acc + curr.time_seconds, 0)
-          moBucket.moving_avg_30 = sum / inWindow30.length
-      }
-    })
-  }
-
-  const { data: fastest } = await supabase
-    .from('puzzle_times')
-    .select('date, time_seconds')
-    .order('time_seconds', { ascending: true })
-    .limit(10)
-
-  const { data: slowest } = await supabase
-    .from('puzzle_times')
-    .select('date, time_seconds')
-    .order('time_seconds', { ascending: false })
-    .limit(10)
-
-  let totalSeconds = 0
-  let dayOfWeekStats: DayOfWeekBucket[] = []
-  let distribution: DistributionBucket[] = []
-
-  if (allTimes) {
-    const dowSums = [0, 0, 0, 0, 0, 0, 0] // Sun-Sat
-    const dowCounts = [0, 0, 0, 0, 0, 0, 0]
-
-    const counts = {
-      '<1': 0,
-      '1-2': 0,
-      '2-3': 0,
-      '3-4': 0,
-      '4-5': 0,
-      '>5': 0,
-    }
-
-    allTimes.forEach(item => {
-      totalSeconds += item.time_seconds
-      
-      // Calculate DOW (Date parses as UTC midnight correctly if format is YYYY-MM-DD)
-      const d = new Date(item.date)
-      if (!isNaN(d.getTime())) {
-          const day = d.getUTCDay()
-          dowSums[day] += item.time_seconds
-          dowCounts[day]++
-      }
-
-      const s = item.time_seconds
-      if (s <= 60) counts['<1']++
-      else if (s <= 120) counts['1-2']++
-      else if (s <= 180) counts['2-3']++
-      else if (s <= 240) counts['3-4']++
-      else if (s <= 300) counts['4-5']++
-      else counts['>5']++
-    })
-
-    const total = allTimes.length
-    distribution = [
-      { label: '< 1 min', percent: (counts['<1'] / total) * 100, count: counts['<1'] },
-      { label: '1 – 2 min', percent: (counts['1-2'] / total) * 100, count: counts['1-2'] },
-      { label: '2 – 3 min', percent: (counts['2-3'] / total) * 100, count: counts['2-3'] },
-      { label: '3 – 4 min', percent: (counts['3-4'] / total) * 100, count: counts['3-4'] },
-      { label: '4 – 5 min', percent: (counts['4-5'] / total) * 100, count: counts['4-5'] },
-      { label: '> 5 min', percent: (counts['>5'] / total) * 100, count: counts['>5'] },
-    ]
-    const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    // Reorder so Monday is first
-    const reorderedIndices = [1, 2, 3, 4, 5, 6, 0]
-    
-    dayOfWeekStats = reorderedIndices.map(i => ({
-        day: daysArr[i],
-        avg_time_seconds: dowCounts[i] > 0 ? dowSums[i] / dowCounts[i] : 0
-    }))
-  }
-
-  return {
-    summary: sum || null,
-    weekly,
-    monthly,
-    topFastest: fastest || [],
-    topSlowest: slowest || [],
-    distribution,
-    dayOfWeekStats,
-    totalSeconds,
-  }
+const RANGE_TITLES: Record<string, string> = {
+  '1m': 'Trend, last month',
+  '3m': 'Trend, last 3 months',
+  '6m': 'Trend, last 6 months',
+  '1y': 'Trend, last year',
+  all: 'Trend, all-time',
 }
 
 export default function DashboardPage() {
-  const [summary, setSummary] = useState<Summary | null>(() => cachedDashboardData?.summary ?? null)
-  const [weekly, setWeekly] = useState<TimeBucket[]>(() => cachedDashboardData?.weekly ?? [])
-  const [monthly, setMonthly] = useState<TimeBucket[]>(() => cachedDashboardData?.monthly ?? [])
-  const [topFastest, setTopFastest] = useState<PuzzleTime[]>(() => cachedDashboardData?.topFastest ?? [])
-  const [topSlowest, setTopSlowest] = useState<PuzzleTime[]>(() => cachedDashboardData?.topSlowest ?? [])
-  const [distribution, setDistribution] = useState<DistributionBucket[]>(() => cachedDashboardData?.distribution ?? [])
-  const [dayOfWeekStats, setDayOfWeekStats] = useState<DayOfWeekBucket[]>(() => cachedDashboardData?.dayOfWeekStats ?? [])
-  const [totalSeconds, setTotalSeconds] = useState<number>(() => cachedDashboardData?.totalSeconds ?? 0)
+  const { stats, loading, error } = usePuzzleTimes()
+  const [range, setRange] = useState('all')
+  const [year, setYear] = useState<number | null>(null)
 
-  // Raw data needed to recalculate day of week stats on the fly when filtered
-  const [allTimesData, setAllTimesData] = useState<{date: string, time_seconds: number}[]>([])
+  const years = useMemo(() => {
+    if (!stats) return []
+    const first = stats.solved[0]
+      ? Number(stats.solved[0].date.slice(0, 4))
+      : stats.endDate.getUTCFullYear()
+    const out: number[] = []
+    for (let y = first; y <= stats.endDate.getUTCFullYear(); y++) out.push(y)
+    return out
+  }, [stats])
 
-  // Filters: '1m', '3m', '6m', '1y', 'all'
-  const [chartFilter, setChartFilter] = useState<string>('all')
+  const activeYear = year ?? stats?.endDate.getUTCFullYear() ?? new Date().getUTCFullYear()
 
-  useEffect(() => {
-    let isMounted = true
+  const gridRange = useMemo(() => {
+    const start = new Date(Date.UTC(activeYear, 0, 1))
+    const yearEnd = new Date(Date.UTC(activeYear, 11, 31))
+    const end = stats && yearEnd > stats.endDate ? stats.endDate : yearEnd
+    return { start, end }
+  }, [activeYear, stats])
 
-    if (cachedDashboardData) {
-      return () => {
-        isMounted = false
-      }
-    }
+  const yearSolved = stats?.solved.filter(d => d.date.startsWith(`${activeYear}-`)) ?? []
+  const yearAvg = yearSolved.length
+    ? Math.round(yearSolved.reduce((s, d) => s + d.seconds, 0) / yearSolved.length)
+    : 0
 
-    if (!dashboardFetchPromise) {
-      dashboardFetchPromise = fetchDashboardData()
-        .then(data => {
-          cachedDashboardData = data
-          return data
-        })
-        .catch(error => {
-          console.error('Failed to load dashboard data', error)
-          throw error
-        })
-    }
+  const monthly = stats ? filterByRange(stats.monthly, range) : []
+  const weekly = stats ? filterByRange(stats.weekly, range) : []
 
-    dashboardFetchPromise
-      .then(data => {
-        if (!isMounted) return
-        setSummary(data.summary)
-        setWeekly(data.weekly)
-        setMonthly(data.monthly)
-        setTopFastest(data.topFastest)
-        setTopSlowest(data.topSlowest)
-        setDistribution(data.distribution)
-        setDayOfWeekStats(data.dayOfWeekStats)
-        setTotalSeconds(data.totalSeconds)
-        
-        // Also fire off a quick supplemental query just to store all raw times for DOW recalculations
-        supabase.from('puzzle_times').select('date, time_seconds').order('date', { ascending: true }).then((res) => {
-            if (res.data) setAllTimesData(res.data)
-        })
-      })
-      .catch(() => {
-        // Errors are logged above; keep the existing state untouched.
-      })
-      .finally(() => {
-        dashboardFetchPromise = null
-      })
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  const fmt = (s: number) => {
-    const m = Math.floor(s / 60)
-      .toString()
-      .padStart(2, '0')
-    const sec = (s % 60).toString().padStart(2, '0')
-    return `${m}:${sec}`
-  }
-
-  const formatDate = (d: string) => {
-    const dt = new Date(d)
-    if (Number.isNaN(dt.getTime())) return d
-    return dt.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'UTC',
+  const dowStats = useMemo(() => {
+    if (!stats) return []
+    if (range === 'all') return stats.dowStats
+    const cutoff = filterByRange(
+      stats.solved.map(d => ({ ...d, month: d.date })),
+      range
+    )
+    const sums = Array.from({ length: 7 }, () => ({ sum: 0, n: 0 }))
+    cutoff.forEach(d => {
+      const i = new Date(`${d.date}T00:00:00Z`).getUTCDay()
+      sums[i].sum += d.seconds
+      sums[i].n += 1
     })
-  }
-
-  // Filter Logic
-  const filterByDate = <T extends { period: string }>(dataArray: T[], filterStr: string): T[] => {
-    if (filterStr === 'all') return dataArray
-    const now = new Date()
-    const cutoff = new Date(now)
-    
-    if (filterStr === '1m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 1)
-    else if (filterStr === '3m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 3)
-    else if (filterStr === '6m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 6)
-    else if (filterStr === '1y') cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1)
-    
-    return dataArray.filter(item => {
-       const rowDate = new Date(item.period)
-       return rowDate >= cutoff
-    })
-  }
-
-  const filteredWeekly = filterByDate(weekly, chartFilter)
-  const filteredMonthly = filterByDate(monthly, chartFilter)
-
-  // Recalculate DOW based on raw data
-  const filteredDayOfWeekStats = (() => {
-    if (allTimesData.length === 0) return dayOfWeekStats // Fallback to initial if still loading raw
-    if (chartFilter === 'all') return dayOfWeekStats
-
-    const now = new Date()
-    const cutoff = new Date(now)
-    if (chartFilter === '1m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 1)
-    else if (chartFilter === '3m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 3)
-    else if (chartFilter === '6m') cutoff.setUTCMonth(cutoff.getUTCMonth() - 6)
-    else if (chartFilter === '1y') cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1)
-
-    const dowSums = [0, 0, 0, 0, 0, 0, 0]
-    const dowCounts = [0, 0, 0, 0, 0, 0, 0]
-
-    allTimesData.forEach(item => {
-        const d = new Date(item.date)
-        if (!isNaN(d.getTime()) && d >= cutoff) {
-            const day = d.getUTCDay()
-            dowSums[day] += item.time_seconds
-            dowCounts[day]++
-        }
-    })
-
-    const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const reorderedIndices = [1, 2, 3, 4, 5, 6, 0]
-    
-    return reorderedIndices.map(i => ({
-        day: daysArr[i],
-        avg_time_seconds: dowCounts[i] > 0 ? dowSums[i] / dowCounts[i] : 0
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    return [1, 2, 3, 4, 5, 6, 0].map(i => ({
+      day: names[i],
+      avg: sums[i].n ? sums[i].sum / sums[i].n : 0,
     }))
-  })()
+  }, [stats, range])
 
-  const timeFilters = [
-    { value: '1m', label: '1M' },
-    { value: '3m', label: '3M' },
-    { value: '6m', label: '6M' },
-    { value: '1y', label: '1Y' },
-    { value: 'all', label: 'All' }
-  ]
+  const hours = stats ? stats.totalSeconds / 3600 : 0
 
   return (
-    <main className="relative mx-auto min-h-screen max-w-6xl space-y-10 px-5 py-16">
-      <div className="space-y-2">
-        <NavPill currentHref="/dashboard" />
-        <h1 className="text-3xl font-extrabold text-white md:text-4xl">Puzzle performance</h1>
-      </div>
+    <main style={{ background: 'var(--bg)', color: 'var(--ink)', minHeight: '100vh' }}>
+      <NavBar />
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-          <h2 className="text-sm uppercase tracking-[0.18em] text-white/60">Total Puzzles</h2>
-          <p className="mt-3 text-4xl font-bold text-white">{summary?.total_puzzles ?? '–'}</p>
-        </div>
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-          <h2 className="text-sm uppercase tracking-[0.18em] text-white/60">All-time Average</h2>
-          <p className="mt-3 text-4xl font-bold text-white">
-            {summary ? fmt(Math.round(summary.avg_time_seconds)) : '–'}
+      <PageShell>
+        {error && (
+          <p style={{ color: 'var(--negative)', fontFamily: 'var(--mono)', fontSize: 13 }}>
+            Could not load your times: {error}
           </p>
-        </div>
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl sm:col-span-2">
-          <h2 className="text-sm uppercase tracking-[0.18em] text-white/60">Fastest Time</h2>
-          {topFastest.length > 0 && (
-            <p className="mt-3 text-4xl font-bold text-white">
-              {fmt(topFastest[0].time_seconds)} on{' '}
-              <span className="font-medium text-white/80">{formatDate(topFastest[0].date)}</span>
+        )}
+
+        {/* ── Hero ─────────────────────────────────────────── */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 40,
+            alignItems: 'end',
+            marginBottom: 36,
+          }}
+        >
+          <div>
+            <div className="eyebrow">Stats deck</div>
+            <h1
+              style={{
+                fontFamily: 'var(--serif)',
+                fontStyle: 'italic',
+                fontSize: 'clamp(64px, 11vw, 110px)',
+                lineHeight: 0.92,
+                letterSpacing: '-.03em',
+                margin: '14px 0 0',
+                fontWeight: 400,
+              }}
+            >
+              {loading ? '—' : hours.toFixed(0)}
+              <span
+                style={{
+                  color: 'var(--accent)',
+                  fontStyle: 'normal',
+                  fontFamily: 'var(--sans)',
+                  fontWeight: 700,
+                  fontSize: 'clamp(52px, 9vw, 90px)',
+                }}
+              >
+                {' '}
+                hrs
+              </span>
+            </h1>
+            <p
+              style={{
+                fontFamily: 'var(--sans)',
+                fontSize: 15,
+                color: 'var(--muted)',
+                maxWidth: 480,
+                marginTop: 14,
+                lineHeight: 1.55,
+              }}
+            >
+              Time we&rsquo;ve spent on {(stats?.solvedCount ?? 0).toLocaleString()} minis, together.
+              Mostly before coffee.
             </p>
-          )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Stat label="Best ever" value={fmtTime(stats?.best ?? null)} accent />
+            <Stat label="Pair avg" value={stats ? fmtTime(Math.round(stats.avg)) : '—'} />
+            <Stat label="Streak" value={stats?.curStreak ?? 0} unit="days" />
+            <Stat
+              label="Completion"
+              value={stats ? `${(stats.completion * 100).toFixed(0)}%` : '—'}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-6 items-stretch md:grid-cols-2">
-        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-          <h3 className="mb-4 text-xl font-semibold">Time Distribution</h3>
-          <table className="w-full table-fixed text-left text-sm text-white/80">
-            <colgroup>
-              <col className="w-1/3" />
-              <col className="w-1/3" />
-              <col className="w-1/3" />
-            </colgroup>
-            <thead className="rounded-lg bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 text-white/80">
-              <tr>
-                <th className="pb-2">Range</th>
-                <th className="pb-2">% of Runs</th>
-                <th className="pb-2">Count</th>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:nth-child(even)]:bg-white/5 [&>tr>td]:py-2">
-              {distribution.map((b, i) => (
-                <tr key={i}>
-                  <td>
-                    <span className="inline-flex rounded-full bg-sky-500/15 px-3 py-1 text-sky-100">
-                      {b.label}
-                    </span>
-                  </td>
-                  <td className="font-semibold text-emerald-100">{b.percent.toFixed(2)}%</td>
-                  <td className="text-indigo-100">{b.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-          <h3 className="mb-4 text-xl font-semibold">Total Solve Time</h3>
-          <table className="w-full table-fixed text-left text-sm text-white/80">
-            <colgroup>
-              <col className="w-1/2" />
-              <col className="w-1/2" />
-            </colgroup>
-            <tbody className="[&>tr>td]:py-2">
-              <tr>
-                <td>Seconds</td>
-                <td>
-                  <span className="inline-flex rounded-lg bg-emerald-500/15 px-3 py-1 font-semibold text-emerald-100">
-                    {totalSeconds}
-                  </span>
-                </td>
-              </tr>
-              <tr>
-                <td>Minutes</td>
-                <td>
-                  <span className="inline-flex rounded-lg bg-sky-500/15 px-3 py-1 font-semibold text-sky-100">
-                    {(totalSeconds / 60).toFixed(2)}
-                  </span>
-                </td>
-              </tr>
-              <tr>
-                <td>Hours</td>
-                <td>
-                  <span className="inline-flex rounded-lg bg-indigo-500/15 px-3 py-1 font-semibold text-indigo-100">
-                    {(totalSeconds / 3600).toFixed(2)}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-
-        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-          <h3 className="mb-4 text-xl font-semibold">Top 10 Fastest Times</h3>
-          <table className="w-full table-fixed text-left text-sm text-white/80">
-            <colgroup>
-              <col className="w-1/2" />
-              <col className="w-1/2" />
-            </colgroup>
-            <thead className="rounded-lg bg-gradient-to-r from-emerald-500/10 via-sky-500/10 to-indigo-500/10 text-white/80">
-              <tr>
-                <th className="pb-2">Date</th>
-                <th className="pb-2">Time</th>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:nth-child(even)]:bg-white/5 [&>tr>td]:py-2">
-              {topFastest.map((item, i) => (
-                <tr key={i}>
-                  <td className="text-white/90">{formatDate(item.date)}</td>
-                  <td className="font-semibold text-emerald-100">{fmt(item.time_seconds)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-          <h3 className="mb-4 text-xl font-semibold">Top 10 Slowest Times</h3>
-          <table className="w-full table-fixed text-left text-sm text-white/80">
-            <colgroup>
-              <col className="w-1/2" />
-              <col className="w-1/2" />
-            </colgroup>
-            <thead className="rounded-lg bg-gradient-to-r from-amber-500/12 via-rose-500/12 to-indigo-500/12 text-white/80">
-              <tr>
-                <th className="pb-2">Date</th>
-                <th className="pb-2">Time</th>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:nth-child(even)]:bg-white/5 [&>tr>td]:py-2">
-              {topSlowest.map((item, i) => (
-                <tr key={i}>
-                  <td className="text-white/90">{formatDate(item.date)}</td>
-                  <td className="font-semibold text-amber-100">{fmt(item.time_seconds)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="overflow-auto rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl md:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h3 className="text-xl font-semibold">Average by Day of the Week</h3>
-            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
-                {timeFilters.map(f => (
-                    <button 
-                       key={f.value}
-                       onClick={() => setChartFilter(f.value)}
-                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${chartFilter === f.value ? 'bg-sky-500/80 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                    >
-                        {f.label}
-                    </button>
+        {/* ── Activity grid ────────────────────────────────── */}
+        <Card style={{ marginBottom: 20 }}>
+          <CardHeading
+            eyebrow={`Activity grid · ${activeYear}`}
+            title={
+              <>
+                {yearSolved.length} solves
+                <span style={{ color: 'var(--muted)', fontWeight: 500 }}>
+                  {' '}
+                  · {fmtTime(yearAvg)} pair avg
+                </span>
+              </>
+            }
+            trailing={
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 4,
+                  padding: 4,
+                  background: 'var(--surface2)',
+                  borderRadius: 99,
+                  flexWrap: 'wrap',
+                }}
+              >
+                {years.map(y => (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => setYear(y)}
+                    aria-pressed={y === activeYear}
+                    style={{
+                      background: y === activeYear ? 'var(--ink)' : 'transparent',
+                      color: y === activeYear ? 'var(--bg)' : 'var(--muted)',
+                      border: 0,
+                      padding: '6px 12px',
+                      borderRadius: 99,
+                      fontFamily: 'var(--mono)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    {y}
+                  </button>
                 ))}
+              </div>
+            }
+            style={{ marginBottom: 18 }}
+          />
+          {stats && <Heatmap start={gridRange.start} end={gridRange.end} times={stats.times} />}
+          <div
+            style={{
+              marginTop: 12,
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
+            <HeatmapLegend />
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted)' }}>
+              Hover for solve time
             </div>
           </div>
-          <div style={{ width: '100%', height: 350 }}>
-            <ResponsiveContainer>
-              <BarChart data={filteredDayOfWeekStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 13 }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={fmt} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 13 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                  contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white' }}
-                  formatter={(value: unknown) => [fmt(Number(value)), 'Average Time']}
-                />
-                <Bar dataKey="avg_time_seconds" radius={[6, 6, 0, 0]} maxBarSize={60}>
-                  {
-                    filteredDayOfWeekStats.map((entry, index) => {
-                      const colors = ['#38bdf8', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185']
-                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                    })
-                  }
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      </div>
+        </Card>
 
-      <div className="grid grid-cols-1 gap-8">
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h3 className="text-xl font-semibold">Weekly Average</h3>
-            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
-                {timeFilters.map(f => (
-                    <button 
-                       key={f.value}
-                       onClick={() => setChartFilter(f.value)}
-                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${chartFilter === f.value ? 'bg-sky-500/80 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                    >
-                        {f.label}
-                    </button>
-                ))}
-            </div>
-          </div>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <LineChart data={filteredWeekly} margin={{ bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                <XAxis
-                  dataKey="period"
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                  tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.7)' }}
-                />
-                <YAxis tickFormatter={fmt} tick={{ fill: 'rgba(255,255,255,0.7)' }} />
-                <Tooltip
-                  contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
-                  labelStyle={{ color: 'white' }}
-                  formatter={(value: unknown, name: string | undefined) => [fmt(Number(value)), name === 'avg_time_seconds' ? 'Weekly Avg' : name === 'moving_avg_30' ? '30-Day Trend' : '7-Day Trend']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="avg_time_seconds"
-                  stroke="#10B981"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="moving_avg_30"
-                  stroke="#F59E0B"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={false}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+        {/* ── Personal best over time ──────────────────────── */}
+        <Card style={{ marginBottom: 20 }}>
+          <CardHeading
+            eyebrow="Personal best, over time"
+            title={
+              <>
+                Record now:{' '}
+                <span className="tnum" style={{ color: 'var(--accent)' }}>
+                  {fmtTime(stats?.best ?? null)}
+                </span>
+              </>
+            }
+            trailing={
+              <div
+                style={{
+                  fontFamily: 'var(--mono)',
+                  fontSize: 11,
+                  color: 'var(--muted)',
+                  letterSpacing: '.1em',
+                }}
+              >
+                monthly running min
+              </div>
+            }
+            style={{ marginBottom: 18 }}
+          />
+          {stats && <BestProgression days={stats.days} height={170} />}
+        </Card>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h3 className="text-xl font-semibold">Monthly Average</h3>
-            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
-                {timeFilters.map(f => (
-                    <button 
-                       key={f.value}
-                       onClick={() => setChartFilter(f.value)}
-                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${chartFilter === f.value ? 'bg-sky-500/80 text-white shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                    >
-                        {f.label}
-                    </button>
-                ))}
+        {/* ── Range control ────────────────────────────────── */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            margin: '28px 0 14px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div className="eyebrow">Trends</div>
+          <RangePills value={range} onChange={setRange} />
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 20,
+            marginBottom: 20,
+          }}
+        >
+          <Card style={{ gridColumn: 'span 1' }}>
+            <CardHeading
+              eyebrow="Monthly average"
+              title={RANGE_TITLES[range]}
+              style={{ marginBottom: 18 }}
+            />
+            <LineChart data={monthly} height={220} />
+          </Card>
+
+          <Card>
+            <div className="eyebrow">Day-of-week</div>
+            <div
+              style={{
+                fontFamily: 'var(--sans)',
+                fontWeight: 700,
+                fontSize: 22,
+                marginTop: 4,
+                marginBottom: 6,
+                letterSpacing: '-.01em',
+              }}
+            >
+              Pair avg by day
             </div>
-          </div>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <LineChart data={filteredMonthly} margin={{ bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                <XAxis
-                  dataKey="period"
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                  tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.7)' }}
-                />
-                <YAxis tickFormatter={fmt} tick={{ fill: 'rgba(255,255,255,0.7)' }} />
-                <Tooltip
-                  contentStyle={{ background: '#0c182e', border: '1px solid rgba(255,255,255,0.1)' }}
-                  labelStyle={{ color: 'white' }}
-                  formatter={(value: unknown, name: string | undefined) => [fmt(Number(value)), name === 'avg_time_seconds' ? 'Monthly Avg' : '30-Day Trend']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="avg_time_seconds"
-                  stroke="#3B82F6"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="moving_avg_30"
-                  stroke="#8B5CF6"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={false}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      </div>
+            <RadialDow stats={dowStats} size={220} />
+          </Card>
+        </div>
+
+        <Card style={{ marginBottom: 20 }}>
+          <CardHeading
+            eyebrow="Weekly average"
+            title="Week over week"
+            style={{ marginBottom: 18 }}
+          />
+          <LineChart data={weekly} height={220} />
+        </Card>
+
+        {/* ── Distribution + records ───────────────────────── */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 20,
+            marginBottom: 20,
+          }}
+        >
+          <Card>
+            <div className="eyebrow">Solve-time distribution</div>
+            <div
+              style={{
+                fontFamily: 'var(--sans)',
+                fontWeight: 700,
+                fontSize: 22,
+                marginTop: 4,
+                marginBottom: 18,
+                letterSpacing: '-.01em',
+              }}
+            >
+              How a normal morning goes
+            </div>
+            <HistBar buckets={stats?.buckets ?? []} height={200} />
+          </Card>
+
+          <Card>
+            <div className="eyebrow">Top 5 fastest mornings</div>
+            <div
+              style={{
+                fontFamily: 'var(--sans)',
+                fontWeight: 700,
+                fontSize: 22,
+                marginTop: 4,
+                marginBottom: 14,
+                letterSpacing: '-.01em',
+              }}
+            >
+              Hall of fame
+            </div>
+            <RecordList rows={stats?.fastest.slice(0, 5) ?? []} />
+          </Card>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 20,
+          }}
+        >
+          <Card>
+            <div className="eyebrow">Top 5 slowest mornings</div>
+            <div
+              style={{
+                fontFamily: 'var(--sans)',
+                fontWeight: 700,
+                fontSize: 22,
+                marginTop: 4,
+                marginBottom: 14,
+                letterSpacing: '-.01em',
+              }}
+            >
+              The long haul
+            </div>
+            <RecordList rows={stats?.slowest.slice(0, 5) ?? []} muted />
+          </Card>
+
+          <Card>
+            <div className="eyebrow">Time banked</div>
+            <div
+              style={{
+                fontFamily: 'var(--sans)',
+                fontWeight: 700,
+                fontSize: 22,
+                marginTop: 4,
+                marginBottom: 14,
+                letterSpacing: '-.01em',
+              }}
+            >
+              All together now
+            </div>
+            {[
+              { label: 'Seconds', value: (stats?.totalSeconds ?? 0).toLocaleString() },
+              { label: 'Minutes', value: ((stats?.totalSeconds ?? 0) / 60).toFixed(1) },
+              { label: 'Hours', value: hours.toFixed(2) },
+              { label: 'Days tracked', value: (stats?.totalDays ?? 0).toLocaleString() },
+              { label: 'Longest streak', value: `${stats?.maxStreak ?? 0} days` },
+            ].map(row => (
+              <div
+                key={row.label}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  padding: '10px 0',
+                  borderBottom: '1px solid var(--rule-soft)',
+                }}
+              >
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted)' }}>
+                  {row.label}
+                </span>
+                <span
+                  className="tnum"
+                  style={{ fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 18 }}
+                >
+                  {row.value}
+                </span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      </PageShell>
     </main>
+  )
+}
+
+function RangePills({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 4,
+        padding: 4,
+        background: 'var(--surface2)',
+        borderRadius: 99,
+      }}
+    >
+      {RANGES.map(r => (
+        <button
+          key={r.value}
+          type="button"
+          onClick={() => onChange(r.value)}
+          aria-pressed={value === r.value}
+          style={{
+            background: value === r.value ? 'var(--ink)' : 'transparent',
+            color: value === r.value ? 'var(--bg)' : 'var(--muted)',
+            border: 0,
+            padding: '6px 12px',
+            borderRadius: 99,
+            fontFamily: 'var(--mono)',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            letterSpacing: '.06em',
+          }}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function RecordList({
+  rows,
+  muted = false,
+}: {
+  rows: { date: string; seconds: number; dow: string }[]
+  muted?: boolean
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="eyebrow" style={{ margin: 0 }}>
+        Nothing logged yet
+      </p>
+    )
+  }
+  return (
+    <>
+      {rows.map((f, i) => (
+        <div
+          key={f.date}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '24px 1fr auto',
+            gap: 12,
+            padding: '10px 0',
+            borderBottom: '1px solid var(--rule-soft)',
+            alignItems: 'center',
+          }}
+        >
+          <div className="tnum mono" style={{ fontSize: 11, color: 'var(--muted)' }}>
+            0{i + 1}
+          </div>
+          <div style={{ fontFamily: 'var(--sans)', fontSize: 14, fontWeight: 500 }}>
+            {fmtDateShort(f.date)}
+            <span style={{ color: 'var(--muted)', marginLeft: 8, fontWeight: 400 }}>{f.dow}</span>
+          </div>
+          <div
+            className="tnum"
+            style={{
+              fontFamily: 'var(--sans)',
+              fontWeight: 700,
+              fontSize: 20,
+              color: muted ? 'var(--ink)' : 'var(--accent)',
+            }}
+          >
+            {fmtTime(f.seconds)}
+          </div>
+        </div>
+      ))}
+    </>
   )
 }

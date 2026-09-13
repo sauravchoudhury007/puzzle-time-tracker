@@ -1,29 +1,259 @@
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+/* Pulse design system.
+   Colour tokens live in src/lib/theme.ts and are injected as custom properties
+   by the root layout, so only structural styling belongs in this file. */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --serif: var(--font-instrument), ui-serif, Georgia, serif;
+  --mono: var(--font-jetbrains), ui-monospace, monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  overflow-x: hidden;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Type utilities ─────────────────────────────────────────── */
+
+.tnum {
+  font-feature-settings: "tnum", "lnum";
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.serif {
+  font-family: var(--serif);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+/* Small uppercase mono label used above nearly every block in Pulse. */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Motion ─────────────────────────────────────────────────── */
+
+.fade-in {
+  animation: fi 0.5s ease both;
+}
+
+@keyframes fi {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hm-cell {
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+/* Per-year hue cells carry both schemes as custom properties; pick one here so
+   the grid follows the light/dark toggle without a re-render. */
+.hm-year {
+  background: var(--c-l);
+  border: 1px solid var(--c-bl);
+}
+
+:root[data-mode="dark"] .hm-year {
+  background: var(--c-d);
+  border-color: var(--c-bd);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) .hm-year {
+    background: var(--c-d);
+    border-color: var(--c-bd);
+  }
+}
+
+.hm-cell:hover {
+  transform: scale(1.6);
+  filter: brightness(1.2);
+  position: relative;
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Form controls ──────────────────────────────────────────── */
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* The nav wraps onto its own line on narrow screens, where the rule dangles. */
+@media (max-width: 700px) {
+  .nav-divider {
+    display: none;
+  }
+}
+
+/* Visually hidden but still focusable — used for the CSV file input. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The date picker glyph is a bitmap; invert it when the surface is dark. */
+:root[data-mode="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mode="light"]) input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Frame page ─────────────────────────────────────────────── */
+
+.frame-stage {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .frame-split {
+    grid-template-columns: 1fr !important;
+  }
+
+  .frame-split > .screen-only {
+    position: static !important;
+  }
+}
+
+/* Only the poster reaches the printer, at its true sheet size. */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  main {
+    min-height: 0 !important;
+    background: none !important;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .frame-shell {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .frame-split {
+    display: block !important;
+    gap: 0 !important;
+  }
+
+  .frame-stage,
+  .poster-scaler {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .poster-scaler > div {
+    transform: none !important;
+    width: auto !important;
+    height: auto !important;
+    box-shadow: none !important;
+  }
+
+  .poster {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    break-inside: avoid;
+  }
 }

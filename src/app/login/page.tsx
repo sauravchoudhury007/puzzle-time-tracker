@@ -1,63 +1,154 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabaseClient'
+import { SITE } from '@/lib/site'
+
+const fieldStyle = {
+  display: 'block',
+  width: '100%',
+  marginTop: 8,
+  background: 'var(--surface2)',
+  border: '1px solid var(--rule-soft)',
+  borderRadius: 'var(--card-r)',
+  padding: '13px 14px',
+  fontFamily: 'var(--sans)',
+  fontSize: 15,
+  color: 'var(--ink)',
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    if (authError) {
-      setError(authError.message)
-    } else {
-      router.replace('/')  // go to dashboard
-    }
+    setLoading(true)
+    setError(null)
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+    if (authError) setError(authError.message)
+    else router.replace('/')
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-sm space-y-4 rounded bg-white dark:bg-gray-800 p-6 shadow"
-      >
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Log In
-        </h1>
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
-        <input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="w-full rounded border px-3 py-2 focus:outline-none focus:ring"
-          required
-        />
-        <input
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="w-full rounded border px-3 py-2 focus:outline-none focus:ring"
-          required
-        />
-        <button
-          type="submit"
-          className="w-full rounded bg-green-600 py-2 text-white hover:bg-green-700"
+    <main
+      style={{
+        background: 'var(--bg)',
+        color: 'var(--ink)',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 24px',
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div className="eyebrow">{SITE.brand}</div>
+          <h1
+            style={{
+              fontFamily: 'var(--serif)',
+              fontStyle: 'italic',
+              fontSize: 'clamp(40px, 9vw, 60px)',
+              lineHeight: 1,
+              letterSpacing: '-.03em',
+              margin: '12px 0 0',
+              fontWeight: 400,
+            }}
+          >
+            Welcome back.
+          </h1>
+          <p
+            style={{
+              fontFamily: 'var(--sans)',
+              fontSize: 14,
+              color: 'var(--muted)',
+              marginTop: 12,
+              lineHeight: 1.6,
+            }}
+          >
+            {SITE.tagline}
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleLogin}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--rule-soft)',
+            borderRadius: 'var(--card-r)',
+            padding: 28,
+          }}
         >
-          Sign In
-        </button>
-      </form>
+          <label style={{ display: 'block', marginBottom: 18 }}>
+            <span className="eyebrow">Email</span>
+            <input
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              style={fieldStyle}
+            />
+          </label>
+
+          <label style={{ display: 'block', marginBottom: 24 }}>
+            <span className="eyebrow">Password</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              style={fieldStyle}
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              background: 'var(--accent)',
+              color: '#0c0c0a',
+              border: 0,
+              borderRadius: 'var(--card-r)',
+              padding: '15px 20px',
+              fontFamily: 'var(--mono)',
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '.22em',
+              textTransform: 'uppercase',
+              cursor: loading ? 'default' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+
+          {error && (
+            <p
+              role="status"
+              style={{
+                marginTop: 18,
+                textAlign: 'center',
+                fontFamily: 'var(--sans)',
+                fontSize: 14,
+                color: 'var(--negative)',
+              }}
+            >
+              {error}
+            </p>
+          )}
+        </form>
+      </div>
     </main>
   )
 }

@@ -1,38 +1,53 @@
-// // src/app/layout.tsx
-// import './globals.css'
-// import { AuthProvider } from '@/components/AuthProvider'
+import type { Metadata } from 'next'
+import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
+import './globals.css'
+import { AuthProvider } from '@/components/AuthProvider'
+import { ThemeProvider } from '@/components/ThemeProvider'
+import { MODE_BOOT_SCRIPT, themeCss } from '@/lib/theme'
 
-// export default function RootLayout({ children }: { children: React.ReactNode }) {
-//   return (
-//     <html lang="en">
-//       <body className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-//         <AuthProvider>{children}</AuthProvider>
-//       </body>
-//     </html>
-//   )
-// }
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
-'use client';
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  variable: '--font-instrument',
+  display: 'swap',
+})
 
-import './globals.css';
-import { AuthProvider } from '@/components/AuthProvider';
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-jetbrains',
+  display: 'swap',
+})
+
+export const metadata: Metadata = {
+  title: 'The Mini Almanac',
+  description: 'A daily ledger of one couple, one puzzle, one cup of coffee.',
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-gradient-to-br from-[#050b1c] via-[#07122b] to-[#0b1f3f] text-slate-50 antialiased">
-        <AuthProvider>
-          <div className="relative min-h-screen overflow-hidden">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -left-10 top-10 h-64 w-64 rounded-full bg-sky-500/20 blur-[120px]" />
-              <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-indigo-600/25 blur-[150px]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.05),transparent_30%),radial-gradient(circle_at_80%_15%,rgba(111,199,255,0.12),transparent_32%),radial-gradient(circle_at_30%_80%,rgba(100,70,255,0.16),transparent_30%)]" />
-            </div>
-
-            <div className="relative">{children}</div>
-          </div>
-        </AuthProvider>
+    <html
+      lang="en"
+      className={`${inter.variable} ${instrumentSerif.variable} ${jetBrainsMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: themeCss() }} />
+        <script dangerouslySetInnerHTML={{ __html: MODE_BOOT_SCRIPT }} />
+      </head>
+      <body>
+        <ThemeProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }
