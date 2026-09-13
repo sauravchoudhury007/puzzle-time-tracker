@@ -2,13 +2,18 @@
 
 import Link from 'next/link'
 import NavBar from '@/components/pulse/NavBar'
-import CoverflowCarousel, { type Photo } from '@/components/pulse/CoverflowCarousel'
+import CoverflowCarousel from '@/components/pulse/CoverflowCarousel'
 import { Card, PageShell, Stat, TickerBar } from '@/components/pulse/Surface'
+import { usePhotos } from '@/hooks/usePhotos'
 import { usePuzzleTimes } from '@/hooks/usePuzzleTimes'
 import { fmtDateLong, fmtTime, todayIso } from '@/lib/format'
 
-export default function TodayView({ photos }: { photos: Photo[] }) {
+const REEL_CARD_W = 440
+const REEL_CARD_H = 500
+
+export default function TodayView() {
   const { stats, error } = usePuzzleTimes()
+  const photos = usePhotos()
 
   const recent = stats ? stats.days.slice(-7) : []
   const recentSolved = recent.filter(d => d.seconds != null)
@@ -37,20 +42,46 @@ export default function TodayView({ photos }: { photos: Photo[] }) {
         )}
 
         {/* ── Centred photo reel ───────────────────────────── */}
-        {photos.length > 0 && (
-          <div
-            style={{
-              padding: '30px 0 40px',
-              borderBottom: '1px solid var(--rule-soft)',
-              textAlign: 'center',
-            }}
-          >
-            <div className="eyebrow" style={{ marginBottom: 30 }}>
-              Highlight reel
-            </div>
-            <CoverflowCarousel photos={photos} cardW={440} cardH={500} spread={260} depth={320} />
+        <div
+          style={{
+            padding: '30px 0 40px',
+            borderBottom: '1px solid var(--rule-soft)',
+            textAlign: 'center',
+          }}
+        >
+          <div className="eyebrow" style={{ marginBottom: 30 }}>
+            Highlight reel
           </div>
-        )}
+          {photos ? (
+            <CoverflowCarousel
+              photos={photos}
+              cardW={REEL_CARD_W}
+              cardH={REEL_CARD_H}
+              spread={260}
+              depth={320}
+            />
+          ) : (
+            // Holds the reel's place while its links load, so the stats below do not jump.
+            <div
+              aria-hidden
+              style={{
+                height: REEL_CARD_H + 52,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: `min(${REEL_CARD_W}px, 78vw)`,
+                  height: `min(${REEL_CARD_H}px, 62vh)`,
+                  borderRadius: Math.round(REEL_CARD_W * 0.05),
+                  background: 'var(--surface2)',
+                }}
+              />
+            </div>
+          )}
+        </div>
 
         {/* ── Last 7 days + headline stats ─────────────────── */}
         <div

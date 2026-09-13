@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import NavBar from '@/components/pulse/NavBar'
 import { Card, CardHeading, PageShell, Stat } from '@/components/pulse/Surface'
@@ -28,7 +28,7 @@ export default function TrackerPage() {
   }, [stats])
 
   /** Opens that day's NYT Mini, and remembers the date for the entry form. */
-  const openPuzzle = (cell: HeatCell) => {
+  const openPuzzle = useCallback((cell: HeatCell) => {
     if (!cell.date) return
     try {
       window.localStorage.setItem(LAST_SELECTED_PUZZLE_DATE_KEY, cell.date)
@@ -40,7 +40,7 @@ export default function TrackerPage() {
       '_blank',
       'noopener,noreferrer'
     )
-  }
+  }, [])
 
   const toggleYear = (year: number) =>
     setOpenYears(prev => {

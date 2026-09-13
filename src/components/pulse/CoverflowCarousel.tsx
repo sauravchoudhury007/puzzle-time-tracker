@@ -169,8 +169,8 @@ export default function CoverflowCarousel({
                   src={p.src}
                   alt={p.label}
                   fill
-                  sizes="(max-width: 768px) 78vw, 440px"
-                  unoptimized
+                  // Cards are min(cardW, 78vw) wide, so the optimizer only ever sends that much photo.
+                  sizes={`(max-width: ${Math.round(cardW / 0.78)}px) 78vw, ${cardW}px`}
                   priority={k < 2}
                   draggable={false}
                   style={{

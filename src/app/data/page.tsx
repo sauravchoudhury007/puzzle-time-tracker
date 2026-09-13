@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import NavBar from '@/components/pulse/NavBar'
 import { Card, PageShell } from '@/components/pulse/Surface'
-import { invalidatePuzzleTimes } from '@/hooks/usePuzzleTimes'
+import { fetchAllRows, invalidatePuzzleTimes } from '@/hooks/usePuzzleTimes'
 import { toDateKey, parseDateKey, addDays } from '@/lib/dateUtils'
+import type { PuzzleRow } from '@/lib/puzzleStats'
 
 const buttonStyle = (disabled: boolean, tone: 'accent' | 'ink' = 'accent') => ({
   width: '100%',
@@ -105,13 +106,11 @@ export default function DataPage() {
     setLoadingExport(true)
     setImportError(null)
 
-    const { data, error } = await supabase
-      .from('puzzle_times')
-      .select('date, time_seconds')
-      .order('date', { ascending: true })
-
-    if (error || !data) {
-      setImportError(error?.message || 'Export failed')
+    let data: PuzzleRow[]
+    try {
+      data = await fetchAllRows()
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Export failed')
       setLoadingExport(false)
       return
     }

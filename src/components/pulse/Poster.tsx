@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { buildWeeks, secondsToLevel } from '@/components/pulse/Heatmap'
 import { yearCellBorder, yearCellColor } from '@/lib/colorUtils'
 import { fmtTime } from '@/lib/format'
@@ -256,8 +256,17 @@ type ArtProps = {
   paperW: number
 }
 
-/** Every year as its own 7×53 block, stacked. */
-function GridArt({ years, stats, tone, contentW, labelW, availH, paperW }: ArtProps) {
+/** Every year as its own 7×53 block, stacked. Memoized, like RibbonArt: editing the
+ *  poster's wording should not redraw thousands of cells. */
+const GridArt = memo(function GridArt({
+  years,
+  stats,
+  tone,
+  contentW,
+  labelW,
+  availH,
+  paperW,
+}: ArtProps) {
   const gridW = contentW - labelW
   const stepFromWidth = gridW / 53
   // 7 rows per year plus 1.8 rows of air between years.
@@ -313,10 +322,18 @@ function GridArt({ years, stats, tone, contentW, labelW, availH, paperW }: ArtPr
       })}
     </div>
   )
-}
+})
 
 /** Every year as one continuous line of days — more abstract, more graphic. */
-function RibbonArt({ years, stats, tone, contentW, labelW, availH, paperW }: ArtProps) {
+const RibbonArt = memo(function RibbonArt({
+  years,
+  stats,
+  tone,
+  contentW,
+  labelW,
+  availH,
+  paperW,
+}: ArtProps) {
   const laneW = contentW - labelW
   const barW = laneW / 366
   const rowsTotal = years.length + Math.max(0, years.length - 1) * 0.45
@@ -366,4 +383,4 @@ function RibbonArt({ years, stats, tone, contentW, labelW, availH, paperW }: Art
       })}
     </div>
   )
-}
+})

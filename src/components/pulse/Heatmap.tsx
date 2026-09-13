@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { addDays, parseDateKey, toDateKey } from '@/lib/dateUtils'
 import { fmtTime } from '@/lib/format'
 import { yearCellVars } from '@/lib/colorUtils'
@@ -78,7 +78,7 @@ function monthLabels(weeks: HeatCell[][]): string[] {
   return labels
 }
 
-export default function Heatmap({
+function Heatmap({
   start,
   end,
   times,
@@ -196,6 +196,9 @@ export default function Heatmap({
     </div>
   )
 }
+
+/* A multi-year grid is thousands of cells; skip re-rendering it when nothing it shows changed. */
+export default memo(Heatmap)
 
 /** Pass `year` to show that year's hue ramp instead of the Pulse lime one. */
 export function HeatmapLegend({ year }: { year?: number }) {
