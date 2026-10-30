@@ -41,6 +41,30 @@ grid, and the two-letter list.
 Both Spelling Bee numbers are derived from the puzzle's own `gameData` plus the
 live score read from the rank bar's `aria-label`, so they update as you play.
 
+### 4. Spelling Bee — wide layout
+NYT caps the board at a 1080px column and centers the hive in it, so on a big
+or zoomed-in window the hive sinks below the fold while the sides sit empty.
+The wide layout:
+- folds the title bar into the toolbar row (one header line instead of three);
+- spreads the board across the window (up to 1800px): hive | found words |
+  hints side by side from 1280px wide, hive | everything else below that;
+- sizes the hive to the window height and keeps it pinned while you scroll;
+- lists every found word in balanced columns instead of NYT's paged list.
+
+On by default. Toggle it with the **Wide layout** switch in the game toolbar
+(next to Stats) or in the popup. Desktop widths only — under 768px NYT's own
+mobile layout takes over.
+
+### 5. Connections — companion hints on the board
+A **Hints** switch in the Connections toolbar, next to the lightbulb. Turning
+it on reads that puzzle's *Connections Companion* (the article the lightbulb
+links to), whose "Need a Hint?" section reveals one word from each group, and
+colors those four tiles yellow / green / blue / purple on the board. A
+selected tile keeps NYT's selected fill with a ring in its hint color.
+
+The switch stays on for that puzzle across reloads, but the next puzzle starts
+with it off. Hide the switch entirely from the popup (**Connections extras**).
+
 ## Install (unpacked)
 
 1. Open `brave://extensions` (or `chrome://extensions`).
@@ -62,7 +86,13 @@ live score read from the rank bar's `aria-label`, so they update as you play.
   `archive.css` covers the archive calendar and the Spelling Bee hub.
 - `src/sb-bridge.js` runs in the **main world** to read `window.gameData`
   (a content script can't see page globals) and posts it to
-  `src/spelling-bee.js`, which renders the two helpers.
+  `src/spelling-bee.js`, which renders the two helpers and the wide layout's
+  toolbar switch and title. The wide layout itself is CSS in
+  `spelling-bee.css`, gated on `data-nytx-sb-layout="wide"`.
+- `src/connections.js` fetches the Connections Companion (same origin, so
+  your subscription cookies come along), reads its four `reveal-block`s and
+  sets `data-nytx-hint="<color>"` on the matching tiles; `connections.css`
+  paints them.
 - Settings live in `chrome.storage.sync`, mirrored to `localStorage` so dark
   mode paints with no flash on load.
 

@@ -306,3 +306,33 @@ html[data-nytx-dark="on"] button[class*="icon"] svg {
   background: rgba(247, 218, 33, 0.92);
   color: #1a1a00;
 }
+
+/* ---- Inline switch for the toolbar toggles (Spelling Bee wide layout,
+ * Connections hints): on while its button has aria-pressed="true". */
+.nytx-switch {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 15px;
+  border-radius: 15px;
+  background: #b9b9b9;
+  transition: background 0.15s;
+}
+.nytx-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+[aria-pressed="true"] > .nytx-switch {
+  background: #f7da21;
+}
+[aria-pressed="true"] > .nytx-switch::after {
+  transform: translateX(11px);
+  background: #1a1a00;
+}

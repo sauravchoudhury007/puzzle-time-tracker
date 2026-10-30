@@ -39,7 +39,12 @@
         "src/styles/wordle.css",
         "src/styles/archive.css"
       ],
-      "js": ["src/settings.js", "src/darkmode.js", "src/spelling-bee.js"],
+      "js": [
+        "src/settings.js",
+        "src/darkmode.js",
+        "src/spelling-bee.js",
+        "src/connections.js"
+      ],
       "run_at": "document_start"
     },
     {

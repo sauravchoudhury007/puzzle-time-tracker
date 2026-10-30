@@ -16,6 +16,8 @@ const DEFAULTS = {
   accent: "medium",
   sbNextRank: true,
   sbHints: true,
+  sbWideLayout: true,
+  cxHints: true,
   toggleButton: true
 };
 
@@ -56,6 +58,8 @@ function render() {
 
   document.getElementById("sbNextRank").checked = state.sbNextRank;
   document.getElementById("sbHints").checked = state.sbHints;
+  document.getElementById("sbWideLayout").checked = state.sbWideLayout;
+  document.getElementById("cxHints").checked = state.cxHints;
   document.getElementById("toggleButton").checked = state.toggleButton;
 }
 
@@ -90,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  ["sbNextRank", "sbHints", "toggleButton"].forEach((id) => {
+  ["sbNextRank", "sbHints", "sbWideLayout", "cxHints", "toggleButton"].forEach((id) => {
     document.getElementById(id).addEventListener("change", (e) => {
       state[id] = e.target.checked;
       save();

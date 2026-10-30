@@ -58,3 +58,57 @@ html[data-nytx-game="connections"][data-nytx-dark="on"] [data-testid="submit-btn
   background-color: var(--nytx-text) !important;
   color: var(--nytx-bg) !important;
 }
+
+/* ======================================================================
+ *  Hints — the Connections Companion's word from each group, painted in
+ *  the group's color (connections.js sets data-nytx-hint on the tile).
+ *  Works in light and dark mode, in NYT's own group colors.
+ * ==================================================================== */
+[data-testid="card-label"][data-nytx-hint="yellow"] {
+  --nytx-hint: var(--connections-yellow, #f9df6d);
+}
+[data-testid="card-label"][data-nytx-hint="green"] {
+  --nytx-hint: var(--connections-green, #a0c35a);
+}
+[data-testid="card-label"][data-nytx-hint="blue"] {
+  --nytx-hint: var(--connections-blue, #b0c4ef);
+}
+[data-testid="card-label"][data-nytx-hint="purple"] {
+  --nytx-hint: var(--connections-maroon, #ba81c5);
+}
+html[data-nytx-game="connections"] [data-testid="card-label"][data-nytx-hint]:not([class*="_selected"]) {
+  background-color: var(--nytx-hint) !important;
+  color: #000 !important;
+}
+html[data-nytx-game="connections"] [data-testid="card-label"][data-nytx-hint]:not([class*="_selected"]) * {
+  color: #000 !important;
+}
+/* Selected: keep NYT's selected fill so the selection still reads, and
+ * ring it in the hint color. */
+html[data-nytx-game="connections"] [data-testid="card-label"][data-nytx-hint][class*="_selected"] {
+  box-shadow: inset 0 0 0 5px var(--nytx-hint) !important;
+}
+
+/* The toolbar switch, left of the lightbulb */
+.nytx-cx-hints-toggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 8px;
+  height: 36px;
+  margin-right: 4px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: 600 16px/1 "nyt-franklin", Arial, sans-serif;
+  cursor: pointer;
+}
+.nytx-cx-hints-toggle:hover {
+  background: rgba(128, 128, 128, 0.15);
+}
+.nytx-cx-hints-toggle[aria-busy="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}

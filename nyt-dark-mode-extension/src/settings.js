@@ -17,6 +17,8 @@
     accent: "medium", // low | medium | high
     sbNextRank: true,
     sbHints: true,
+    sbWideLayout: true,
+    cxHints: true,
     toggleButton: true
   };
 

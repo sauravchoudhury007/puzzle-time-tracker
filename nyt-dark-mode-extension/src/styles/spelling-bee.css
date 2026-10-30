@@ -318,3 +318,187 @@ html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-two.nytx-partial 
 html[data-nytx-game="spelling-bee"][data-nytx-dark="on"] .nytx-h-sum.nytx-done {
   color: #7ee08f !important;
 }
+
+/* ======================================================================
+ *  (4) Wide layout — fills the window instead of NYT's 1080px column.
+ *  Gated on html[data-nytx-sb-layout="wide"] (popup / toolbar switch);
+ *  with it off NYT's layout is untouched. Desktop widths only: under
+ *  768px NYT switches to its own mobile layout.
+ * ==================================================================== */
+
+/* Toolbar title + switch (injected by spelling-bee.js; the switch itself
+ * is .nytx-switch in common.css) */
+.nytx-sb-title {
+  display: none;
+  align-items: baseline;
+  gap: 12px;
+  white-space: nowrap;
+}
+.nytx-sb-title-name {
+  font: 700 26px/1 "nyt-karnakcondensed", Georgia, serif;
+}
+.nytx-sb-title-date {
+  font: 300 18px/1 "nyt-franklin", Arial, sans-serif;
+}
+.nytx-layout-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 767.98px) {
+  .nytx-layout-toggle {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  html[data-nytx-sb-layout="wide"] {
+    --nytx-sb-max: 1800px;
+    --nytx-sb-gap: 20px;
+    --nytx-sb-hive-col: clamp(300px, 30vw, 460px);
+    --nytx-sb-hints-col: clamp(360px, 24vw, 440px);
+  }
+
+  /* One header row: NYT's title bar goes and the toolbar's empty left slot
+   * shows our one-line title instead. Keyed on the title being there so
+   * the welcome screen (no toolbar) keeps NYT's. */
+  html[data-nytx-sb-layout="wide"] #spelling-bee-container:has(#nytx-sb-title) {
+    margin-top: 0 !important;
+  }
+  html[data-nytx-sb-layout="wide"] #spelling-bee-container:has(#nytx-sb-title) .pz-game-title-bar {
+    display: none !important;
+  }
+  html[data-nytx-sb-layout="wide"] [class*="ToolbarAdapter-module_toolbarContainer"] {
+    padding: 0 max(24px, calc((100% - var(--nytx-sb-max)) / 2 + 24px)) !important;
+  }
+  html[data-nytx-sb-layout="wide"] .pz-toolbar-left {
+    display: flex;
+    align-items: center;
+  }
+  html[data-nytx-sb-layout="wide"] .nytx-sb-title {
+    display: flex;
+  }
+
+  /* Board: hive column + status column, edge to edge */
+  html[data-nytx-sb-layout="wide"] .sb-content-box {
+    max-width: var(--nytx-sb-max) !important;
+    padding: 12px 24px 24px !important;
+    gap: var(--nytx-sb-gap);
+    align-items: flex-start !important;
+    box-sizing: border-box;
+  }
+  /* These three are scroll containers (overflow hidden/auto), which would
+   * pin the sticky hive to them instead of the page. */
+  html[data-nytx-sb-layout="wide"] .sb-content-box,
+  html[data-nytx-sb-layout="wide"] .sb-layout-box :has(> .sb-game-moment) {
+    overflow: visible !important;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-game-moment {
+    overflow: clip !important;
+  }
+
+  /* Hive: top-aligned (NYT centers it in a column as tall as the word list,
+   * which pushed it below the fold), sized to the window height, and
+   * pinned under the nav bar while the page scrolls. */
+  html[data-nytx-sb-layout="wide"] .sb-controls-box {
+    flex: 0 0 var(--nytx-sb-hive-col) !important;
+    width: var(--nytx-sb-hive-col) !important;
+    align-self: flex-start !important;
+    align-items: flex-start !important;
+    position: sticky !important;
+    top: 68px;
+  }
+  /* Never smaller than NYT's own 290px, which the Delete/Shuffle/Enter row
+   * needs; a window too short for that just scrolls. */
+  html[data-nytx-sb-layout="wide"] .sb-controls {
+    width: 100% !important;
+    max-width: max(290px, min(100%, (100vh - 290px) * 1.06)) !important;
+    padding-bottom: 12px !important;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-status-box {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* Word list: every found word in balanced columns — no fixed 64vh
+   * window, no sideways paging. */
+  html[data-nytx-sb-layout="wide"] .sb-wordlist-drawer,
+  html[data-nytx-sb-layout="wide"] .sb-wordlist-window,
+  html[data-nytx-sb-layout="wide"] .sb-wordlist-pag {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-wordlist-items-pag {
+    display: block !important;
+    height: auto !important;
+    columns: 140px auto;
+    column-gap: 25px;
+    padding: 0 25px 16px 0 !important;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-wordlist-items-pag > li {
+    width: auto !important;
+    margin-right: 0 !important;
+    break-inside: avoid;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-kebob {
+    display: none !important;
+  }
+
+  /* Helpers: same 12px side margins as the rank bar and word list */
+  html[data-nytx-sb-layout="wide"] #nytx-next-rank {
+    margin: 8px 12px 0;
+  }
+  html[data-nytx-sb-layout="wide"] #nytx-hints {
+    margin: 12px 12px 0;
+    container-type: inline-size;
+  }
+  html[data-nytx-sb-layout="wide"] .nytx-grid {
+    width: 100%;
+    font-size: 14px;
+  }
+  /* Tighter cells than the classic panel: the table stretches to fill its
+   * column anyway, and the narrowest (360px) hints column needs the room. */
+  html[data-nytx-sb-layout="wide"] .nytx-grid th,
+  html[data-nytx-sb-layout="wide"] .nytx-grid td {
+    padding: 3px 4px;
+  }
+  html[data-nytx-sb-layout="wide"] .nytx-two {
+    font-size: 14px;
+  }
+  /* A wide panel (two-column layout) puts the two-letter list beside the
+   * grid instead of under it. */
+  @container (min-width: 560px) {
+    html[data-nytx-sb-layout="wide"] .nytx-hints.nytx-open .nytx-hints-body {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-rows: auto auto;
+      grid-auto-flow: column;
+      column-gap: 32px;
+    }
+  }
+}
+
+/* Three columns — hive | words | hints — once there's room */
+@media (min-width: 1280px) {
+  html[data-nytx-sb-layout="wide"] .sb-status-box:has(> #nytx-hints) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) var(--nytx-sb-hints-col);
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--nytx-sb-gap);
+    align-items: start;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-status-box > .sb-progress-box {
+    grid-area: 1 / 1;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-status-box > #nytx-next-rank {
+    grid-area: 2 / 1;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-status-box > .sb-wordlist-box {
+    grid-area: 3 / 1;
+  }
+  html[data-nytx-sb-layout="wide"] .sb-status-box > #nytx-hints {
+    grid-area: 1 / 2 / 4 / 3;
+    margin: 12px 0 0;
+  }
+}

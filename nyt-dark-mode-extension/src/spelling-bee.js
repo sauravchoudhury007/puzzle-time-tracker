@@ -2,6 +2,8 @@
  *  (2) Points-to-next-rank shown under the ranking bar (no clicking).
  *  (3) Hints panel (word count, pangram count, length grid, two-letter
  *      list) computed from the puzzle data and shown on the game page.
+ *  (4) Wide layout switch in the game toolbar, plus the one-line title
+ *      the wide layout shows there (the layout itself is CSS).
  *
  * All numbers are derived from the puzzle answer list (received from
  * sb-bridge.js) plus the player's found words read out of the DOM, so
@@ -416,14 +418,70 @@
     }
   }
 
+  // The switch goes first in the toolbar (Stats · Answers · Hints · More);
+  // the title fills the toolbar's empty left slot, which the wide layout
+  // uses as its only header row. Neither needs the puzzle data.
+  function renderLayoutChrome() {
+    const right = document.querySelector(".pz-toolbar-right");
+    if (!right) return;
+    const wide =
+      document.documentElement.getAttribute("data-nytx-sb-layout") === "wide";
+
+    let btn = document.getElementById("nytx-layout-toggle");
+    if (!btn) {
+      btn = el(
+        "button",
+        "pz-toolbar-button nytx-layout-toggle",
+        '<span>Wide layout</span><span class="nytx-switch" aria-hidden="true"></span>'
+      );
+      btn.id = "nytx-layout-toggle";
+      btn.type = "button";
+      // Keep focus off the button: the game reads Enter from the page, and
+      // a focused button would turn the next word's Enter into a toggle.
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
+      btn.addEventListener("click", () => {
+        NYTX.load((cur) => NYTX.save({ sbWideLayout: !cur.sbWideLayout }));
+      });
+      right.insertBefore(btn, right.firstChild);
+    }
+    if (btn.getAttribute("aria-pressed") !== String(wide)) {
+      btn.setAttribute("aria-pressed", String(wide));
+      btn.title = wide
+        ? "Switch back to the classic NYT layout"
+        : "Spread the board across the window";
+    }
+
+    const left = document.querySelector(".pz-toolbar-left");
+    if (!left) return;
+    let title = document.getElementById("nytx-sb-title");
+    if (!title) {
+      title = el(
+        "div",
+        "nytx-sb-title",
+        '<span class="nytx-sb-title-name">Spelling Bee</span>' +
+          '<span class="nytx-sb-title-date"></span>'
+      );
+      title.id = "nytx-sb-title";
+      left.appendChild(title);
+    }
+    const dateEl = document.querySelector(".pz-game-date");
+    const date =
+      (dateEl && dateEl.textContent.trim()) || (DATA && DATA.displayDate) || "";
+    const dateSpan = title.querySelector(".nytx-sb-title-date");
+    if (dateSpan.textContent !== date) dateSpan.textContent = date;
+  }
+
   let rendering = false;
   function renderAll() {
-    if (!MODEL || rendering) return;
+    if (rendering) return;
     rendering = true;
     try {
-      renderNextRank();
-      renderHints();
-      updateHints();
+      renderLayoutChrome();
+      if (MODEL) {
+        renderNextRank();
+        renderHints();
+        updateHints();
+      }
     } catch (e) {
       /* keep the page alive no matter what */
     } finally {
@@ -445,8 +503,14 @@
   // renderAll. Re-run the FULL render — both the next-rank line and the hints
   // panel — as the layout mounts and as the player finds words. renderHints
   // builds once and renderNextRank only writes on change, so this is cheap.
+  // The toolbar title goes in right away, before the next paint: the wide
+  // layout swaps NYT's title bar for it, so a debounced insert would show
+  // the board jumping up 150ms after it appears.
   const mo = new MutationObserver(() => {
-    if (!MODEL || rendering) return;
+    if (rendering) return;
+    try {
+      if (!document.getElementById("nytx-sb-title")) renderLayoutChrome();
+    } catch (e) {}
     clearTimeout(window.__nytxSbT);
     window.__nytxSbT = setTimeout(renderAll, 150);
   });
