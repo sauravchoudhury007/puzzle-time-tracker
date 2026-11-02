@@ -4,6 +4,8 @@
  *      list) computed from the puzzle data and shown on the game page.
  *  (4) Wide layout switch in the game toolbar, plus the one-line title
  *      the wide layout shows there (the layout itself is CSS).
+ *  (5) The word just found flashes in the word list and stays tinted
+ *      until the next one.
  *
  * All numbers are derived from the puzzle answer list (received from
  * sb-bridge.js) plus the player's found words read out of the DOM, so
@@ -471,12 +473,84 @@
     if (dateSpan.textContent !== date) dateSpan.textContent = date;
   }
 
+  // ---- (5) Recent words: the last four found, newest brightest ----
+  // The list is diffed against the last look at it: exactly one new word is
+  // one the player just entered. The first look (the list mounting with
+  // everything found so far) only sets the baseline, so nothing flashes on
+  // load. Each <li> gets data-nytx-recent="1".."4" (1 = newest) and the CSS
+  // fades the tint step by step as newer words push it down. The four are
+  // remembered per puzzle so a reload still marks them.
+  const RECENT_KEY = "nytx-sb-recent-words";
+  const RECENT_MAX = 4;
+  let knownWords = null;
+  let recent = null;
+
+  function puzzleId() {
+    const d = document.querySelector(".pz-game-date");
+    return (d && d.textContent.trim()) || (DATA && DATA.displayDate) || location.pathname;
+  }
+
+  function loadRecent() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(RECENT_KEY));
+      if (saved && saved.puzzle === puzzleId() && Array.isArray(saved.words))
+        return saved.words.slice(0, RECENT_MAX);
+    } catch (e) {}
+    return [];
+  }
+
+  function markLatestWord() {
+    const items = document.querySelectorAll(".sb-wordlist-items-pag > li");
+    if (!items.length) return;
+    const byWord = new Map();
+    items.forEach((li) => {
+      const a = li.querySelector(".sb-anagram") || li;
+      const w = (a.textContent || "").trim().toLowerCase();
+      if (w) byWord.set(w, li);
+    });
+
+    if (!recent) recent = loadRecent();
+    let flash = null;
+    if (knownWords) {
+      const added = [...byWord.keys()].filter((w) => !knownWords.has(w));
+      if (added.length === 1) {
+        flash = added[0];
+        recent = [flash, ...recent.filter((w) => w !== flash)].slice(0, RECENT_MAX);
+        try {
+          localStorage.setItem(RECENT_KEY, JSON.stringify({ puzzle: puzzleId(), words: recent }));
+        } catch (e) {}
+      }
+    }
+    knownWords = new Set(byWord.keys());
+
+    const on = document.documentElement.getAttribute("data-nytx-sb-lastword") !== "off";
+    byWord.forEach((li, w) => {
+      const rank = on ? recent.indexOf(w) + 1 : 0;
+      const want = rank ? String(rank) : null;
+      if (li.getAttribute("data-nytx-recent") !== want) {
+        if (want) li.setAttribute("data-nytx-recent", want);
+        else li.removeAttribute("data-nytx-recent");
+      }
+    });
+    const li = on && flash && byWord.get(flash);
+    if (li) {
+      // Restart the animation even if this li flashed before.
+      li.classList.remove("nytx-flash");
+      void li.offsetWidth;
+      li.classList.add("nytx-flash");
+      li.addEventListener("animationend", () => li.classList.remove("nytx-flash"), {
+        once: true
+      });
+    }
+  }
+
   let rendering = false;
   function renderAll() {
     if (rendering) return;
     rendering = true;
     try {
       renderLayoutChrome();
+      markLatestWord();
       if (MODEL) {
         renderNextRank();
         renderHints();

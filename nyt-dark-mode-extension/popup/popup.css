@@ -127,6 +127,13 @@ body {
   border-top: 1px solid var(--border);
 }
 
+.pp-version {
+  display: block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Dim the games list / extras when master is off */
 body.master-off #games-section,
 body.master-off .pp-seg {

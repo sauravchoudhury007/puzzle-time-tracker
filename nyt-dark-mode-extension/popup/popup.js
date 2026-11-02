@@ -17,6 +17,7 @@ const DEFAULTS = {
   sbNextRank: true,
   sbHints: true,
   sbWideLayout: true,
+  sbLastWord: true,
   cxHints: true,
   toggleButton: true
 };
@@ -59,11 +60,15 @@ function render() {
   document.getElementById("sbNextRank").checked = state.sbNextRank;
   document.getElementById("sbHints").checked = state.sbHints;
   document.getElementById("sbWideLayout").checked = state.sbWideLayout;
+  document.getElementById("sbLastWord").checked = state.sbLastWord;
   document.getElementById("cxHints").checked = state.cxHints;
   document.getElementById("toggleButton").checked = state.toggleButton;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // From manifest.json, so it shows which build Chrome actually loaded.
+  document.getElementById("version").textContent =
+    "v" + chrome.runtime.getManifest().version;
   load();
 
   document.getElementById("enabled").addEventListener("change", (e) => {
@@ -94,7 +99,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  ["sbNextRank", "sbHints", "sbWideLayout", "cxHints", "toggleButton"].forEach((id) => {
+  [
+    "sbNextRank",
+    "sbHints",
+    "sbWideLayout",
+    "sbLastWord",
+    "cxHints",
+    "toggleButton"
+  ].forEach((id) => {
     document.getElementById(id).addEventListener("change", (e) => {
       state[id] = e.target.checked;
       save();

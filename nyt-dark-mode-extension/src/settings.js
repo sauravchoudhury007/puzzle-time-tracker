@@ -18,6 +18,7 @@
     sbNextRank: true,
     sbHints: true,
     sbWideLayout: true,
+    sbLastWord: true,
     cxHints: true,
     toggleButton: true
   };

@@ -46,16 +46,26 @@ NYT caps the board at a 1080px column and centers the hive in it, so on a big
 or zoomed-in window the hive sinks below the fold while the sides sit empty.
 The wide layout:
 - folds the title bar into the toolbar row (one header line instead of three);
-- spreads the board across the window (up to 1800px): hive | found words |
-  hints side by side from 1280px wide, hive | everything else below that;
-- sizes the hive to the window height and keeps it pinned while you scroll;
+- spreads the board across the window (up to 1800px): hints | hive | rank
+  and found words side by side from 1100px wide, with the hive in the middle
+  of the page; hive | everything else below that;
+- centers the hive top to bottom in the window, sizes it to the window
+  height, and keeps it there while you scroll;
 - lists every found word in balanced columns instead of NYT's paged list.
 
 On by default. Toggle it with the **Wide layout** switch in the game toolbar
 (next to Stats) or in the popup. Desktop widths only — under 768px NYT's own
 mobile layout takes over.
 
-### 5. Connections — companion hints on the board
+### 5. Spelling Bee — recent words
+Each word you find flashes bee yellow in the word list. Your last four words
+stay highlighted, newest brightest: every new find pushes the others down a
+step and their tint and underline fade, so the oldest slowly disappears. They're
+remembered per puzzle, so a reload still marks them. Turn it off in the popup
+(**Highlight recent words**). Reduced-motion settings skip the flash and fades
+and keep only the tints.
+
+### 6. Connections — companion hints on the board
 A **Hints** switch in the Connections toolbar, next to the lightbulb. Turning
 it on reads that puzzle's *Connections Companion* (the article the lightbulb
 links to), whose "Need a Hint?" section reveals one word from each group, and
@@ -74,6 +84,12 @@ with it off. Hide the switch entirely from the popup (**Connections extras**).
 4. Open/refresh any NYT game tab. Use the toolbar icon to configure.
 
 > Already-open game tabs need a refresh after install/upgrade.
+
+### Version number
+`manifest.json` → `version` is what `chrome://extensions` and the bottom of
+the popup show, so you can tell which build Chrome has loaded. Chrome never
+changes it itself; bump it with every change: the middle number for a new
+feature (1.1.0 → 1.2.0), the last for a fix (1.1.0 → 1.1.1).
 
 ## How it works
 

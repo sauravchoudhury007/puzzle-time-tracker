@@ -17,6 +17,7 @@
     root.setAttribute("data-nytx-sb-nextrank", s.sbNextRank ? "on" : "off");
     root.setAttribute("data-nytx-sb-hints", s.sbHints ? "on" : "off");
     root.setAttribute("data-nytx-sb-layout", s.sbWideLayout ? "wide" : "classic");
+    root.setAttribute("data-nytx-sb-lastword", s.sbLastWord ? "on" : "off");
     root.setAttribute("data-nytx-cx-hints", s.cxHints ? "on" : "off");
     window.__nytxSettings = s;
     window.__nytxGame = game;
