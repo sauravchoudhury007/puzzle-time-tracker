@@ -64,6 +64,19 @@ toast, so nothing lingers on the icon.
   cached, on a 401, or when the tab loads and the cache is warmed for free. If the
   server rejects a cached token anyway, one forced refresh is retried before
   giving up. Timings for every submit are logged to the service worker console.
+- On every Mini page load, `content.js` trims NYT's Statsig feature-flag
+  caches (`statsig.cached.evaluations.*`, ~60 KB each, never cleaned up by NYT)
+  to the newest five. Left alone they fill nytimes.com's 5 MB localStorage
+  quota, and NYT can no longer keep puzzle state there, which is what loses
+  solves made with several Mini tabs open.
+- After a solve, `content.js` also checks NYT recorded it. NYT keeps one
+  localStorage slot of Mini state shared by every Mini tab, so with several
+  puzzles open it can hold an old copy of another tab's puzzle. NYT then
+  re-sends that copy in a loop and this tab's own completion never goes out, so
+  the archive shows the day unsolved. If NYT's server has no completed save after
+  a few seconds, the extension drops slot entries for other puzzles that the
+  server already holds a newer copy of, and NYT's queued save goes through.
+  Nothing NYT hasn't synced is touched.
 - `popup.js` is just the UI — it asks the content script for the timer and hands
   submissions to the background worker.
 

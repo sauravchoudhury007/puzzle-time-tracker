@@ -99,6 +99,108 @@ const dateFromPage = () => {
 
 const getPuzzleDate = () => dateFromPath() || dateFromPage() || localDateIso()
 
+// NYT's feature-flag SDK (Statsig) caches ~60 KB of flags per user hash in
+// localStorage and never trims them. A hundred of those fill the ~5 MB quota,
+// after which NYT can't keep puzzle state there, and solves made with several
+// Mini tabs open get lost. Keep the newest few; the SDK refetches the rest.
+const STATSIG_CACHE_PREFIX = 'statsig.cached.evaluations.'
+const STATSIG_CACHE_KEEP = 5
+
+const pruneStatsigCache = () => {
+  try {
+    const receivedAt = key => {
+      try {
+        return JSON.parse(localStorage.getItem(key))?.receivedAt || 0
+      } catch {
+        return 0
+      }
+    }
+    const stale = Object.keys(localStorage)
+      .filter(key => key.startsWith(STATSIG_CACHE_PREFIX))
+      .map(key => ({ key, at: receivedAt(key) }))
+      .sort((a, b) => b.at - a.at)
+      .slice(STATSIG_CACHE_KEEP)
+    for (const { key } of stale) localStorage.removeItem(key)
+    if (stale.length) console.info('[NYT Mini Timer] pruned stale Statsig caches', stale.length)
+  } catch (err) {
+    console.warn('[NYT Mini Timer] could not prune Statsig caches', err)
+  }
+}
+
+// NYT keeps one localStorage slot of Mini state per user, shared by every Mini
+// tab. With several puzzles open at once it ends up holding another tab's
+// puzzle, often a copy from before that puzzle was solved. When this tab saves,
+// NYT first re-sends that copy, the server answers with its newer state, and
+// NYT re-sends it again, forever. This tab's own solve never goes out, and the
+// archive shows the day unsolved once the tab is closed. Dropping a copy the
+// server has already superseded breaks the loop, and NYT's queued save follows.
+const NYT_STATE_PREFIX = 'games-state-crossword_mini/'
+const NYT_SAVE_GRACE_MS = 4000
+const NYT_SAVE_CHECKS = 6
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+const nytJson = async path => {
+  const res = await fetch(path, { credentials: 'include' })
+  if (!res.ok) throw new Error(`${path} → ${res.status}`)
+  return res.json()
+}
+
+const nytServerState = async puzzleId => {
+  const body = await nytJson(`/svc/games/state/crossword_mini/latests?puzzle_ids=${puzzleId}`)
+  return body?.states?.find(s => String(s.puzzle_id) === String(puzzleId)) || null
+}
+
+/** Removes slot entries for other puzzles that the server holds a newer copy
+ *  of. Anything the server doesn't have yet is a genuinely unsynced solve, so
+ *  it stays for NYT to send. Returns how many entries were dropped. */
+const clearSupersededNytStates = async date => {
+  let dropped = 0
+  for (const key of Object.keys(localStorage)) {
+    if (!key.startsWith(NYT_STATE_PREFIX)) continue
+    let stored
+    try {
+      stored = JSON.parse(localStorage.getItem(key))
+    } catch {
+      continue
+    }
+    const states = Array.isArray(stored?.states) ? stored.states : []
+    const keep = []
+    for (const entry of states) {
+      if (entry?.printDate === date || !entry?.puzzleId) {
+        keep.push(entry)
+        continue
+      }
+      const server = await nytServerState(entry.puzzleId).catch(() => null)
+      if (server && server.timestamp >= entry.timestamp) dropped++
+      else keep.push(entry)
+    }
+    if (keep.length === states.length) continue
+    if (keep.length) localStorage.setItem(key, JSON.stringify({ ...stored, states: keep }))
+    else localStorage.removeItem(key)
+  }
+  return dropped
+}
+
+/** Waits for NYT to record the solve on its own, and only steps in if it
+ *  hasn't. Never throws — this is a best-effort repair of NYT's client. */
+const ensureNytRecordedSolve = async date => {
+  try {
+    const { id } = await nytJson(`/svc/crosswords/v6/puzzle/mini/${date}.json`)
+    for (let check = 0; check < NYT_SAVE_CHECKS; check++) {
+      await sleep(NYT_SAVE_GRACE_MS)
+      const state = await nytServerState(id)
+      if (state?.game_data?.completionFraction === 1) return true
+      const dropped = await clearSupersededNytStates(date)
+      if (dropped) console.info('[NYT Mini Timer] cleared stale NYT state blocking the save', { date, dropped })
+    }
+    console.warn('[NYT Mini Timer] NYT still has no completed save for this puzzle', date)
+  } catch (err) {
+    console.warn('[NYT Mini Timer] could not check NYT saved the solve', err)
+  }
+  return false
+}
+
 const TOAST_ID = 'nyt-mini-timer-toast'
 const TOAST_VISIBLE_MS = 4000
 const TOAST_FADE_MS = 260
@@ -300,7 +402,10 @@ const tick = () => {
   state.timerText = formatSeconds(seconds)
   console.debug('[NYT Mini Timer] solved', { seconds, date })
   notifySolved(seconds, date)
+  ensureNytRecordedSolve(date)
 }
+
+pruneStatsigCache()
 
 const timer = setInterval(() => {
   try {

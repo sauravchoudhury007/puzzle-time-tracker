@@ -76,10 +76,47 @@ const CONGRATS = `
   </div>
 `
 
+// Recent Node ships its own `localStorage` global, which is undefined without
+// --localstorage-file and shadows jsdom's. content.js uses the bare global.
+if (!globalThis.localStorage) {
+  const items = new Map()
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: new Proxy(
+      {
+        getItem: key => (items.has(key) ? items.get(key) : null),
+        setItem: (key, value) => items.set(key, String(value)),
+        removeItem: key => items.delete(key),
+        clear: () => items.clear(),
+      },
+      // Object.keys(localStorage) lists stored keys, as in a browser.
+      { ownKeys: () => [...items.keys()], getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) }
+    ),
+  })
+}
+
+/** Stands in for NYT's puzzle and game-state endpoints. `states` maps a
+ *  puzzle id to what the server has saved for it. */
+const fakeNyt = ({ puzzleId = 900, states = {} } = {}) => {
+  globalThis.fetch = vi.fn(async url => {
+    const json = body => ({ ok: true, status: 200, json: async () => body })
+    if (url.includes('/svc/crosswords/v6/puzzle/mini/')) return json({ id: puzzleId })
+    const ids = /puzzle_ids=(\d+)/.exec(url)
+    if (ids) {
+      const state = states[ids[1]]
+      return json({ states: state ? [{ puzzle_id: ids[1], ...state }] : [] })
+    }
+    return { ok: false, status: 404, json: async () => ({}) }
+  })
+  return states
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
   document.body.innerHTML = ''
   window.history.replaceState({}, '', '/crosswords/game/mini')
+  localStorage.clear()
+  fakeNyt()
 })
 
 afterEach(() => {
@@ -268,5 +305,106 @@ describe('confirmation toast', () => {
   it('ignores a well-labelled reply that is missing the time', () => {
     solveWith({ kind: TOAST_KIND, ok: true, alreadyLogged: false })
     expect(readToast()).toBeNull()
+  })
+})
+
+describe('NYT save guard', () => {
+  const SLOT = 'games-state-crossword_mini/42'
+  const entry = (puzzleId, printDate, timestamp) => ({
+    puzzleId,
+    printDate,
+    timestamp,
+    data: { cells: {}, completionFraction: 0 },
+  })
+  const slot = () => JSON.parse(localStorage.getItem(SLOT))?.states.map(e => e.puzzleId) ?? null
+
+  const solveArchive = () => {
+    window.history.replaceState({}, '', '/crosswords/game/mini/2026/10/21')
+    document.body.innerHTML = '<div class="timer-count">1:23</div>'
+    loadContentScript()
+    vi.advanceTimersByTime(1000)
+    document.body.innerHTML = CONGRATS
+    vi.advanceTimersByTime(1000)
+  }
+
+  it('leaves NYT’s storage alone when NYT saved the solve itself', async () => {
+    localStorage.setItem(SLOT, JSON.stringify({ states: [entry('800', '2026-10-20', 100)] }))
+    fakeNyt({ states: { 900: { timestamp: 300, game_data: { completionFraction: 1 } }, 800: { timestamp: 200 } } })
+
+    solveArchive()
+    await vi.advanceTimersByTimeAsync(30000)
+
+    expect(slot()).toEqual(['800'])
+  })
+
+  it('drops another puzzle’s stale copy when it is blocking the save', async () => {
+    localStorage.setItem(SLOT, JSON.stringify({ states: [entry('800', '2026-10-20', 100)] }))
+    const states = fakeNyt({
+      states: { 900: { timestamp: 50, game_data: { completionFraction: 0 } }, 800: { timestamp: 200 } },
+    })
+
+    solveArchive()
+    await vi.advanceTimersByTimeAsync(4000)
+    expect(localStorage.getItem(SLOT)).toBeNull()
+
+    // NYT's queued save goes through once the slot is clear; checking stops.
+    states[900] = { timestamp: 400, game_data: { completionFraction: 1 } }
+    const calls = fetch.mock.calls.length
+    await vi.advanceTimersByTimeAsync(4000)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(fetch.mock.calls.length).toBe(calls + 1)
+  })
+
+  it('keeps this puzzle’s entry and anything the server has not seen yet', async () => {
+    localStorage.setItem(
+      SLOT,
+      JSON.stringify({
+        states: [
+          entry('800', '2026-10-20', 100), // superseded on the server
+          entry('700', '2026-10-19', 500), // newer than the server: unsynced
+          entry('600', '2026-10-18', 100), // server has nothing
+          entry('900', '2026-10-21', 100), // this tab's puzzle
+        ],
+      })
+    )
+    fakeNyt({ states: { 900: { timestamp: 50, game_data: {} }, 800: { timestamp: 200 }, 700: { timestamp: 300 } } })
+
+    solveArchive()
+    await vi.advanceTimersByTimeAsync(4000)
+
+    expect(slot()).toEqual(['700', '600', '900'])
+  })
+
+  it('never lets a failing NYT endpoint break solve reporting', async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('offline')
+    })
+    const { sent } = solveWith({ kind: TOAST_KIND, ok: true, time: '1:23', date: todayIso() })
+    expect(readToast().heading).toBe('1:23 logged')
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(sent).toHaveLength(1)
+  })
+})
+
+describe('Statsig cache pruning', () => {
+  it('keeps the newest five caches and leaves everything else alone', () => {
+    for (let i = 0; i < 8; i++) {
+      localStorage.setItem(`statsig.cached.evaluations.${i}`, JSON.stringify({ receivedAt: i * 1000, data: 'x' }))
+    }
+    localStorage.setItem('statsig.cached.evaluations.broken', '{not json')
+    localStorage.setItem('statsig.stable_id.1', 'abc')
+    localStorage.setItem('games-state-crossword_mini/42', '{"states":[]}')
+
+    loadContentScript()
+
+    expect(Object.keys(localStorage).sort()).toEqual([
+      'games-state-crossword_mini/42',
+      'statsig.cached.evaluations.3',
+      'statsig.cached.evaluations.4',
+      'statsig.cached.evaluations.5',
+      'statsig.cached.evaluations.6',
+      'statsig.cached.evaluations.7',
+      'statsig.stable_id.1',
+    ])
   })
 })
